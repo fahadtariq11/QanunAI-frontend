@@ -1,36 +1,233 @@
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Here is a clean, professional, and developer-friendly **GitHub README.md draft** for your *Legal Document Analyzer* project.
+It includes badges, descriptions, installation instructions, architecture details, screenshots placeholders, API outline, and contribution guidelines.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 🧾 **Legal Document Analyzer – AI-Powered Contract Understanding Platform**
+
+An intelligent, multi-agent LegalTech platform that helps individuals, freelancers, and small businesses understand legal documents using OCR, clause detection, risk analysis, RAG-based question answering, and compliance checking against Pakistani laws.
+
+This system empowers non-lawyers to interpret contracts quickly and safely while providing access to verified lawyers for professional advice.
+
+
+
+## 🚀 **Features**
+
+### 📝 Document Upload & OCR
+
+* Upload PDF, DOCX, or image-based legal documents
+* Automatic OCR using **Tesseract** for scanned files
+* Text cleaning, segmentation, and document type identification
+
+### 🤖 Multi-Agent AI System
+
+The platform uses an agentic AI architecture with four specialized agents:
+
+1. **Document Intake Agent** – OCR, cleaning, chunking, vectorization
+2. **Contract Analysis Agent** – clause detection, risk scoring, summary generation
+3. **Conversational QA Agent** – RAG-powered question answering
+4. **Compliance Agent** – compares risky clauses to Pakistani legal corpus
+
+### 📚 Retrieval-Augmented Generation (RAG)
+
+* FAISS-based dual vector store (Document + Laws)
+* Legal corpus grounding improves accuracy and reduces hallucinations
+
+### 👨‍⚖️ Lawyer Directory & Consultations
+
+* Browse verified lawyers by specialization or city
+* Submit consultation requests linked to a specific document
+* Lawyers receive and manage consultation requests
+
+### 🔐 Security
+
+* JWT-based authentication
+* Encrypted file storage for all uploaded contracts
+* Role-based access (user/lawyer/admin)
+
+
+
+## 🏗️ **System Architecture**
+
+```
+Frontend (React + TypeScript + Vite)
+       |
+Backend API (FastAPI, JWT, Orchestration Layer)
+       |
+AI Layer (Multi-Agent System)
+    ├── Intake Agent
+    ├── Analysis Agent
+    ├── QA Agent
+    └── Compliance Agent
+       |
+Storage Layer
+    ├── PostgreSQL (Structured Data)
+    ├── Encrypted File Storage
+    └── FAISS Vector Stores (Document + Law Corpus)
+```
+
+
+
+## 📸 **Screenshots**
+
+> *(Add your actual screenshots here once frontend is ready)*
+
+```
+/screenshots
+   ├── upload_page.png
+   ├── analysis_results.png
+   ├── qa_chat.png
+   ├── compliance_report.png
+   ├── lawyer_directory.png
+   └── consultation_request.png
+```
+
+
+
+## 🛠️ **Tech Stack**
+
+### **Frontend**
+
+* React 18
+* TypeScript
+* Vite
+* Tailwind CSS
+* shadcn/ui
+
+### **Backend**
+
+* FastAPI
+* Python 3.10+
+* Pydantic
+* Uvicorn
+
+### **AI & NLP**
+
+* Tesseract OCR
+* FAISS
+* Transformer Embeddings
+* RAG + LLM (OpenAI-compatible API)
+* Custom Multi-Agent Architecture
+
+### **Database & Storage**
+
+* PostgreSQL
+* Encrypted file storage (documents)
+* Vector stores for embeddings
+
+
+## ⚙️ **Installation & Setup**
+
+### **1. Clone the Project**
+
+```bash
+git clone https://github.com/<your-org>/legal-document-analyzer.git
+cd legal-document-analyzer
+```
+
+
+
+## 🖥️ Backend Setup
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate   # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+```
+
+### **Environment Variables**
+
+Create a `.env` file:
+
+```
+DATABASE_URL=postgresql://user:password@localhost/legal_analyzer
+LLM_API_KEY=your_api_key
+SECRET_KEY=your_secret_key
+OCR_PATH=/usr/bin/tesseract
+```
+
+### **Run server**
+
+```bash
+uvicorn main:app --reload
+```
+
+
+
+## 🌐 Frontend Setup
+
+```bash
+cd frontend
+npm install
 npm run dev
+```
 
-**Edit a file directly in GitHub**
+Set frontend `.env`:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```
+VITE_API_BASE_URL=http://localhost:8000
+```
 
-**Use GitHub Codespaces**
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🧪 **Testing**
 
-## What technologies are used for this project?
+* Backend tests use `pytest`
+* Frontend tests optional with Vitest/Jest
+* Manual tests for document processing workflows
 
-This project is built with:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+
+## 📡 **API Overview (Short Version)**
+
+### **Authentication**
+
+`POST /auth/register`
+`POST /auth/login`
+
+### **Documents**
+
+`POST /documents/upload`
+`GET /documents/{id}`
+`GET /documents/{id}/analysis`
+
+### **QA Chat**
+
+`POST /qa`
+
+### **Compliance**
+
+`POST /compliance/check/{documentId}`
+
+### **Lawyers**
+
+`GET /lawyers`
+`POST /consultations/request`
+
+*(More detailed API docs are auto-generated via FastAPI’s `/docs` and `/redoc`.)*
+
+
+## 🤝 **Contribution Guide**
+
+1. Fork the repo
+2. Create a feature branch
+3. Follow the existing coding standards
+4. Add tests where needed
+5. Submit a pull request
+
+
+
+## 📄 **License**
+
+MIT License or choose another license depending on your preference.
+
+
+
+## ⭐ **Acknowledgements**
+
+* FCCU Faculty & Advisers
+* OpenAI and HuggingFace ecosystems
+* Tesseract OCR contributors
+* PostgreSQL and FAISS developers
+
 
