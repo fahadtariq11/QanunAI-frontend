@@ -9,17 +9,21 @@ import {
   TrendingUp,
   Calendar,
   Globe,
-  Tag
+  Tag,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { LegalUpdateCard } from '@/components/LegalUpdateCard';
+import { useLegalUpdates } from '@/hooks/useApi';
 
 const Updates = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  
+  const { data: updates = [], isLoading, error } = useLegalUpdates();
 
   const categories = [
     'all',
@@ -32,88 +36,14 @@ const Updates = () => {
     'regulatory'
   ];
 
-  // Mock legal updates data
-  const updates = [
-    {
-      id: 1,
-      headline: "New Data Privacy Regulations Impact Contract Requirements",
-      summary: "Recent updates to data privacy laws require additional clauses in contracts involving personal data processing. Companies must update their agreements by Q2 2024.",
-      source: "Legal Today",
-      publishDate: "2024-01-15",
-      category: "data-privacy",
-      importance: "high",
-      readTime: "5 min",
-      url: "#",
-      tags: ["GDPR", "Data Protection", "Contracts"]
-    },
-    {
-      id: 2,
-      headline: "Supreme Court Ruling Affects Employment Arbitration Clauses",
-      summary: "A landmark Supreme Court decision has changed how arbitration clauses in employment contracts are enforced, particularly regarding class action waivers.",
-      source: "Employment Law Weekly",
-      publishDate: "2024-01-14",
-      category: "employment",
-      importance: "high",
-      readTime: "8 min",
-      url: "#",
-      tags: ["Arbitration", "Employment", "Supreme Court"]
-    },
-    {
-      id: 3,
-      headline: "New Corporate Governance Standards for Public Companies",
-      summary: "The SEC has introduced new disclosure requirements for executive compensation and board diversity that will affect proxy statements and governance policies.",
-      source: "Corporate Counsel",
-      publishDate: "2024-01-13",
-      category: "corporate",
-      importance: "medium",
-      readTime: "6 min",
-      url: "#",
-      tags: ["SEC", "Corporate Governance", "Disclosure"]
-    },
-    {
-      id: 4,
-      headline: "AI in Legal Practice: New Ethical Guidelines Released",
-      summary: "The American Bar Association has published comprehensive guidelines for the ethical use of artificial intelligence in legal practice and client representation.",
-      source: "ABA Journal",
-      publishDate: "2024-01-12",
-      category: "regulatory",
-      importance: "medium",
-      readTime: "4 min",
-      url: "#",
-      tags: ["AI", "Ethics", "Legal Practice"]
-    },
-    {
-      id: 5,
-      headline: "Intellectual Property Updates: Patent Filing Changes",
-      summary: "New USPTO rules streamline the patent application process while introducing stricter requirements for software and business method patents.",
-      source: "IP Law Today",
-      publishDate: "2024-01-11",
-      category: "intellectual-property",
-      importance: "medium",
-      readTime: "7 min",
-      url: "#",
-      tags: ["Patents", "USPTO", "Software"]
-    },
-    {
-      id: 6,
-      headline: "Compliance Alert: Anti-Money Laundering Rule Updates",
-      summary: "Financial institutions must implement new customer due diligence requirements under updated AML regulations effective March 2024.",
-      source: "Compliance Today",
-      publishDate: "2024-01-10",
-      category: "compliance",
-      importance: "high",
-      readTime: "6 min",
-      url: "#",
-      tags: ["AML", "Financial Services", "Compliance"]
-    }
-  ];
-
-  const filteredUpdates = updates.filter(update => {
-    const matchesSearch = update.headline.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         update.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         update.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredUpdates = updates.filter((update: any) => {
+    const matchesSearch = update.headline?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         update.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         update.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         update.content?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesCategory = selectedCategory === 'all' || update.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || 
+                           update.category?.toLowerCase() === selectedCategory;
     
     return matchesSearch && matchesCategory;
   });
@@ -191,7 +121,7 @@ const Updates = () => {
               <AlertCircle className="h-5 w-5 text-destructive" />
               <div>
                 <p className="text-sm font-medium">High Priority</p>
-                <p className="text-2xl font-bold">{updates.filter(u => u.importance === 'high').length}</p>
+                <p className="text-2xl font-bold">{updates.filter((u: any) => u.importance === 'high').length}</p>
               </div>
             </div>
           </CardContent>
@@ -202,7 +132,7 @@ const Updates = () => {
             <div className="flex items-center space-x-2">
               <Calendar className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm font-medium">This Week</p>
+                <p className="text-sm font-medium">Total Updates</p>
                 <p className="text-2xl font-bold">{updates.length}</p>
               </div>
             </div>
@@ -214,8 +144,8 @@ const Updates = () => {
             <div className="flex items-center space-x-2">
               <BookOpen className="h-5 w-5 text-accent" />
               <div>
-                <p className="text-sm font-medium">Read Time</p>
-                <p className="text-2xl font-bold">{updates.reduce((acc, update) => acc + parseInt(update.readTime), 0)} min</p>
+                <p className="text-sm font-medium">Categories</p>
+                <p className="text-2xl font-bold">{categories.length - 1}</p>
               </div>
             </div>
           </CardContent>
@@ -234,14 +164,21 @@ const Updates = () => {
       </div>
 
       {/* Updates List */}
-      <div className="space-y-4">
-        {filteredUpdates.map((update) => (
-          <LegalUpdateCard key={update.id} update={update} />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading updates...</span>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredUpdates.map((update: any) => (
+            <LegalUpdateCard key={update.id} update={update} />
+          ))}
+        </div>
+      )}
 
       {/* Empty State */}
-      {filteredUpdates.length === 0 && (
+      {!isLoading && filteredUpdates.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
             <BookOpen className="h-12 w-12 text-foreground-muted mx-auto mb-4" />

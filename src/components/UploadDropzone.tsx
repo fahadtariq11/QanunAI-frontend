@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
-import { Upload, FileText, X, CheckCircle } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { useUploadDocument } from '@/hooks/useApi';
 
 interface UploadDropzoneProps {
   onClose?: () => void;
@@ -14,7 +15,10 @@ export const UploadDropzone = ({ onClose }: UploadDropzoneProps) => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const uploadMutation = useUploadDocument();
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -43,23 +47,29 @@ export const UploadDropzone = ({ onClose }: UploadDropzoneProps) => {
     }
   };
 
-  const handleFileUpload = (file: File) => {
+  const handleFileUpload = async (file: File) => {
     setUploadedFile(file);
     setIsUploading(true);
     setUploadProgress(0);
+    setUploadError(null);
 
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsUploading(false);
-          setIsCompleted(true);
-          return 100;
-        }
-        return prev + 10;
-      });
+    // Simulate progress while uploading
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => Math.min(prev + 10, 90));
     }, 200);
+
+    try {
+      await uploadMutation.mutateAsync({ file, title: file.name });
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      setIsUploading(false);
+      setIsCompleted(true);
+    } catch (error: any) {
+      clearInterval(progressInterval);
+      setUploadProgress(0);
+      setIsUploading(false);
+      setUploadError(error.message || 'Upload failed. Please try again.');
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -69,6 +79,30 @@ export const UploadDropzone = ({ onClose }: UploadDropzoneProps) => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  if (uploadError) {
+    return (
+      <div className="text-center py-12 animate-fade-in">
+        <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertCircle className="h-8 w-8 text-destructive" />
+        </div>
+        <h3 className="text-xl font-heading font-semibold mb-2">Upload Failed</h3>
+        <p className="text-foreground-muted mb-6">{uploadError}</p>
+        <div className="flex gap-3 justify-center">
+          <Button variant="outline" onClick={() => {
+            setUploadError(null);
+            setUploadedFile(null);
+            setUploadProgress(0);
+          }}>
+            Try Again
+          </Button>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (isCompleted) {
     return (

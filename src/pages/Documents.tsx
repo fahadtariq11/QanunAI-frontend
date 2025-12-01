@@ -12,7 +12,8 @@ import {
   CheckCircle,
   Clock,
   FileCheck,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,76 +27,22 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UploadDropzone } from '@/components/UploadDropzone';
 import { DocumentCard } from '@/components/DocumentCard';
+import { useDocuments } from '@/hooks/useApi';
 
 const Documents = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showUpload, setShowUpload] = useState(false);
-
-  // Mock documents data
-  const documents = [
-    {
-      id: 1,
-      name: "Employment Agreement - Tech Corp.pdf",
-      uploadDate: "2024-01-15",
-      status: "analyzed",
-      riskLevel: "medium",
-      riskCount: 3,
-      fileSize: "2.4 MB",
-      pages: 12,
-      summary: "Standard employment contract with moderate risk clauses around termination and intellectual property."
-    },
-    {
-      id: 2,
-      name: "Service Contract - Marketing Agency.pdf",
-      uploadDate: "2024-01-14",
-      status: "processing",
-      riskLevel: "high",
-      riskCount: 7,
-      fileSize: "1.8 MB",
-      pages: 8,
-      summary: "Service agreement with several high-risk liability and payment terms."
-    },
-    {
-      id: 3,
-      name: "Non-Disclosure Agreement.pdf",
-      uploadDate: "2024-01-13",
-      status: "analyzed",
-      riskLevel: "low",
-      riskCount: 1,
-      fileSize: "856 KB",
-      pages: 3,
-      summary: "Standard NDA with minimal risk factors."
-    },
-    {
-      id: 4,
-      name: "Lease Agreement - Office Space.pdf",
-      uploadDate: "2024-01-12",
-      status: "analyzed",
-      riskLevel: "medium",
-      riskCount: 4,
-      fileSize: "3.2 MB",
-      pages: 15,
-      summary: "Commercial lease with moderate risk clauses in maintenance and termination sections."
-    },
-    {
-      id: 5,
-      name: "Partnership Agreement.pdf",
-      uploadDate: "2024-01-11",
-      status: "failed",
-      riskLevel: "unknown",
-      riskCount: 0,
-      fileSize: "4.1 MB",
-      pages: 0,
-      summary: "Analysis failed due to poor document quality. Please re-upload."
-    }
-  ];
+  
+  const { data: documents = [], isLoading, error, refetch } = useDocuments();
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'analyzed':
+      case 'completed':
         return <CheckCircle className="h-4 w-4 text-accent" />;
       case 'processing':
+      case 'pending':
         return <Clock className="h-4 w-4 text-warning" />;
       case 'failed':
         return <AlertTriangle className="h-4 w-4 text-destructive" />;
@@ -107,8 +54,10 @@ const Documents = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'analyzed':
+      case 'completed':
         return 'bg-accent/10 text-accent border-accent/20';
       case 'processing':
+      case 'pending':
         return 'bg-warning/10 text-warning border-warning/20';
       case 'failed':
         return 'bg-destructive/10 text-destructive border-destructive/20';
@@ -117,11 +66,17 @@ const Documents = () => {
     }
   };
 
-  const filteredDocuments = documents.filter(doc => {
-    const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredDocuments = documents.filter((doc: any) => {
+    const matchesSearch = doc.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         doc.name?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = filterStatus === 'all' || doc.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
+
+  const handleUploadSuccess = () => {
+    setShowUpload(false);
+    refetch();
+  };
 
   return (
     <div className="space-y-6">
@@ -150,7 +105,7 @@ const Documents = () => {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <UploadDropzone onClose={() => setShowUpload(false)} />
+            <UploadDropzone onClose={handleUploadSuccess} />
           </div>
         </div>
       )}
@@ -199,14 +154,21 @@ const Documents = () => {
       </div>
 
       {/* Documents Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredDocuments.map((document) => (
-          <DocumentCard key={document.id} document={document} />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading documents...</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredDocuments.map((document: any) => (
+            <DocumentCard key={document.id} document={document} />
+          ))}
+        </div>
+      )}
 
       {/* Empty State */}
-      {filteredDocuments.length === 0 && (
+      {!isLoading && filteredDocuments.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
             <FileText className="h-12 w-12 text-foreground-muted mx-auto mb-4" />

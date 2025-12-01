@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
+import { Chatbot } from '@/components/Chatbot';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -12,7 +13,8 @@ import {
   X,
   Scale,
   Shield,
-  LogOut
+  LogOut,
+  MessageCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -28,6 +30,7 @@ const Layout = () => {
     { name: 'Dashboard', href: '/app', icon: LayoutDashboard },
     { name: 'Documents', href: '/app/documents', icon: FileText },
     { name: 'Lawyers', href: '/app/lawyers', icon: Users },
+    { name: 'Messages', href: '/app/messages', icon: MessageCircle },
     { name: 'Legal Updates', href: '/app/updates', icon: Newspaper },
     { name: 'Profile', href: '/app/profile', icon: User },
     { name: 'Settings', href: '/app/settings', icon: Settings },
@@ -185,6 +188,9 @@ const Layout = () => {
         
         <Footer />
       </div>
+      
+      {/* Persistent Chatbot */}
+      <Chatbot />
     </div>
   );
 };

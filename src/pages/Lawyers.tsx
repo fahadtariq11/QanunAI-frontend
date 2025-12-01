@@ -11,7 +11,8 @@ import {
   Clock,
   DollarSign,
   Award,
-  Building
+  Building,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,11 +20,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LawyerCard } from '@/components/LawyerCard';
+import { useLawyers } from '@/hooks/useApi';
 
 const Lawyers = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
+  
+  const { data: lawyers = [], isLoading, error } = useLawyers();
 
   const specialties = [
     'all',
@@ -47,122 +51,21 @@ const Lawyers = () => {
     'remote'
   ];
 
-  // Mock lawyers data
-  const lawyers = [
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      title: "Senior Corporate Lawyer",
-      firm: "Johnson & Associates",
-      location: "New York, NY",
-      specialties: ["corporate", "mergers-acquisitions"],
-      rating: 4.9,
-      reviewCount: 127,
-      hourlyRate: 450,
-      responseTime: "2 hours",
-      experience: 12,
-      languages: ["English", "Spanish"],
-      avatar: "/api/placeholder/100/100",
-      verified: true,
-      bio: "Specializing in corporate law and M&A transactions with over 12 years of experience helping businesses navigate complex legal challenges."
-    },
-    {
-      id: 2,
-      name: "Michael Chen",
-      title: "Employment Law Expert",
-      firm: "Chen Legal Group",
-      location: "San Francisco, CA",
-      specialties: ["employment", "labor-disputes"],
-      rating: 4.8,
-      reviewCount: 89,
-      hourlyRate: 380,
-      responseTime: "4 hours",
-      experience: 8,
-      languages: ["English", "Mandarin"],
-      avatar: "/api/placeholder/100/100",
-      verified: true,
-      bio: "Focused on employment law and workplace rights, helping both employees and employers resolve complex labor issues."
-    },
-    {
-      id: 3,
-      name: "Emily Rodriguez",
-      title: "IP & Technology Lawyer",
-      firm: "TechLaw Partners",
-      location: "Austin, TX",
-      specialties: ["intellectual-property", "technology"],
-      rating: 4.9,
-      reviewCount: 156,
-      hourlyRate: 420,
-      responseTime: "1 hour",
-      experience: 10,
-      languages: ["English", "Spanish", "Portuguese"],
-      avatar: "/api/placeholder/100/100",
-      verified: true,
-      bio: "Expert in intellectual property and technology law, protecting innovations and digital assets for startups and enterprises."
-    },
-    {
-      id: 4,
-      name: "David Thompson",
-      title: "Real Estate Attorney",
-      firm: "Thompson Real Estate Law",
-      location: "Miami, FL",
-      specialties: ["real-estate", "property-development"],
-      rating: 4.7,
-      reviewCount: 94,
-      hourlyRate: 320,
-      responseTime: "3 hours",
-      experience: 15,
-      languages: ["English"],
-      avatar: "/api/placeholder/100/100",
-      verified: true,
-      bio: "Comprehensive real estate legal services for residential and commercial properties, including development and investment."
-    },
-    {
-      id: 5,
-      name: "Jennifer Kim",
-      title: "Litigation Specialist",
-      firm: "Kim & Partners",
-      location: "Chicago, IL",
-      specialties: ["litigation", "dispute-resolution"],
-      rating: 4.8,
-      reviewCount: 203,
-      hourlyRate: 500,
-      responseTime: "2 hours",
-      experience: 18,
-      languages: ["English", "Korean"],
-      avatar: "/api/placeholder/100/100",
-      verified: true,
-      bio: "Experienced litigator specializing in complex commercial disputes and alternative dispute resolution methods."
-    },
-    {
-      id: 6,
-      name: "Robert Wilson",
-      title: "Tax Law Consultant",
-      firm: "Wilson Tax Law",
-      location: "Remote",
-      specialties: ["tax", "business-planning"],
-      rating: 4.6,
-      reviewCount: 67,
-      hourlyRate: 280,
-      responseTime: "6 hours",
-      experience: 20,
-      languages: ["English"],
-      avatar: "/api/placeholder/100/100",
-      verified: true,
-      bio: "Tax law specialist helping individuals and businesses optimize their tax strategies and ensure compliance."
-    }
-  ];
-
-  const filteredLawyers = lawyers.filter(lawyer => {
-    const matchesSearch = lawyer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         lawyer.firm.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         lawyer.specialties.some(spec => spec.includes(searchQuery.toLowerCase()));
+  const filteredLawyers = lawyers.filter((lawyer: any) => {
+    const name = lawyer.full_name || lawyer.name || '';
+    const firm = lawyer.firm || '';
+    const specializations = lawyer.specializations || lawyer.specialties || [];
+    const jurisdiction = lawyer.jurisdiction || lawyer.location || '';
+    
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         firm.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         specializations.some((s: string) => s.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesSpecialty = selectedSpecialty === 'all' || 
-                            lawyer.specialties.includes(selectedSpecialty);
+                            specializations.some((s: string) => s.toLowerCase().includes(selectedSpecialty.replace('-', ' ')));
     
     const matchesLocation = selectedLocation === 'all' || 
-                           lawyer.location.toLowerCase().includes(selectedLocation.replace('-', ' '));
+                           jurisdiction.toLowerCase().includes(selectedLocation.replace('-', ' '));
     
     return matchesSearch && matchesSpecialty && matchesLocation;
   });
@@ -250,14 +153,31 @@ const Lawyers = () => {
       </div>
 
       {/* Lawyers Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredLawyers.map((lawyer) => (
-          <LawyerCard key={lawyer.id} lawyer={lawyer} />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading lawyers...</span>
+        </div>
+      ) : error ? (
+        <Card className="text-center py-12">
+          <CardContent>
+            <User className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-heading font-semibold mb-2">Failed to load lawyers</h3>
+            <p className="text-foreground-muted mb-4">
+              Please try again later.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {filteredLawyers.map((lawyer: any) => (
+            <LawyerCard key={lawyer.id} lawyer={lawyer} />
+          ))}
+        </div>
+      )}
 
       {/* Empty State */}
-      {filteredLawyers.length === 0 && (
+      {!isLoading && !error && filteredLawyers.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
             <User className="h-12 w-12 text-foreground-muted mx-auto mb-4" />

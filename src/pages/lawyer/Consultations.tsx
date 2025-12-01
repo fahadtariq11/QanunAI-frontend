@@ -5,101 +5,29 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertTriangle, FileText, User, Calendar } from "lucide-react";
+import { AlertTriangle, FileText, User, Calendar, Loader2 } from "lucide-react";
+import { useLawyerConsultations, useUpdateConsultationStatus } from "@/hooks/useApi";
+import { useToast } from "@/hooks/use-toast";
 
 type Consultation = {
-  id: string;
-  userName: string;
-  userEmail: string;
-  documentTitle: string;
-  riskLevel: "high" | "medium" | "low";
-  requestedDate: string;
-  status: "pending" | "in-progress" | "completed" | "rejected";
-  documentSummary: string;
-  topRisks: string[];
+  id: number;
+  user_name: string;
+  user_email: string;
+  document_title: string;
+  document_summary?: string;
+  top_risks?: string[];
+  risk_level: string;
+  requested_at: string;
+  status: string;
 };
 
 const Consultations = () => {
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const consultations: Consultation[] = [
-    {
-      id: "1",
-      userName: "Sarah Johnson",
-      userEmail: "sarah.j@email.com",
-      documentTitle: "Employment Agreement",
-      riskLevel: "high",
-      requestedDate: "2024-01-20",
-      status: "pending",
-      documentSummary: "A 15-page employment contract with several non-compete clauses and IP assignment provisions.",
-      topRisks: [
-        "Overly broad non-compete clause covering entire industry",
-        "Unclear intellectual property ownership terms",
-        "No clear termination conditions specified",
-      ],
-    },
-    {
-      id: "2",
-      userName: "Michael Chen",
-      userEmail: "m.chen@email.com",
-      documentTitle: "NDA Contract",
-      riskLevel: "medium",
-      requestedDate: "2024-01-19",
-      status: "pending",
-      documentSummary: "A standard non-disclosure agreement for a software development project.",
-      topRisks: [
-        "Indefinite confidentiality period",
-        "Broad definition of confidential information",
-        "Limited exceptions to confidentiality obligations",
-      ],
-    },
-    {
-      id: "3",
-      userName: "Emily Rodriguez",
-      userEmail: "emily.r@email.com",
-      documentTitle: "Partnership Agreement",
-      riskLevel: "high",
-      requestedDate: "2024-01-18",
-      status: "in-progress",
-      documentSummary: "A complex partnership agreement for a new business venture.",
-      topRisks: [
-        "Unequal profit distribution without clear justification",
-        "No exit strategy or dissolution terms",
-        "Unlimited personal liability exposure",
-      ],
-    },
-    {
-      id: "4",
-      userName: "David Kim",
-      userEmail: "david.k@email.com",
-      documentTitle: "Service Agreement",
-      riskLevel: "low",
-      requestedDate: "2024-01-17",
-      status: "completed",
-      documentSummary: "A straightforward service agreement with standard terms.",
-      topRisks: [
-        "Payment terms slightly favor service provider",
-        "Limited warranties on service quality",
-        "Standard indemnification clause",
-      ],
-    },
-    {
-      id: "5",
-      userName: "Lisa Thompson",
-      userEmail: "lisa.t@email.com",
-      documentTitle: "Lease Agreement",
-      riskLevel: "medium",
-      requestedDate: "2024-01-16",
-      status: "completed",
-      documentSummary: "A commercial lease agreement for office space.",
-      topRisks: [
-        "Landlord has broad rights to enter premises",
-        "Tenant responsible for structural repairs",
-        "Automatic rent escalation clause",
-      ],
-    },
-  ];
+  const { toast } = useToast();
+  
+  const { data: consultations = [], isLoading, error, refetch } = useLawyerConsultations();
+  const updateStatus = useUpdateConsultationStatus();
 
   const getRiskBadge = (risk: string) => {
     const variants: Record<string, { variant: "destructive" | "default" | "secondary"; label: string }> = {
@@ -107,7 +35,8 @@ const Consultations = () => {
       medium: { variant: "default", label: "Medium Risk" },
       low: { variant: "secondary", label: "Low Risk" },
     };
-    const config = variants[risk] || variants.medium;
+    const riskLower = (risk || 'medium').toLowerCase();
+    const config = variants[riskLower] || variants.medium;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -118,7 +47,8 @@ const Consultations = () => {
       completed: { className: "bg-green-100 text-green-800", label: "Completed" },
       rejected: { className: "bg-red-100 text-red-800", label: "Rejected" },
     };
-    const config = variants[status] || variants.pending;
+    const statusLower = (status || 'pending').toLowerCase();
+    const config = variants[statusLower] || variants.pending;
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
@@ -127,20 +57,53 @@ const Consultations = () => {
     setIsModalOpen(true);
   };
 
-  const handleAccept = () => {
-    console.log("Accepting consultation:", selectedConsultation?.id);
-    setIsModalOpen(false);
+  const handleStatusUpdate = async (newStatus: string) => {
+    if (!selectedConsultation) return;
+    
+    try {
+      await updateStatus.mutateAsync({ 
+        id: selectedConsultation.id, 
+        status: newStatus 
+      });
+      toast({
+        title: "Status Updated",
+        description: `Consultation marked as ${newStatus}.`,
+      });
+      setIsModalOpen(false);
+      refetch();
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to update consultation status.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleReject = () => {
-    console.log("Rejecting consultation:", selectedConsultation?.id);
-    setIsModalOpen(false);
-  };
+  const handleAccept = () => handleStatusUpdate('in-progress');
+  const handleReject = () => handleStatusUpdate('rejected');
+  const handleMarkCompleted = () => handleStatusUpdate('completed');
 
-  const handleMarkCompleted = () => {
-    console.log("Marking consultation as completed:", selectedConsultation?.id);
-    setIsModalOpen(false);
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <p className="text-destructive">Failed to load consultations. Please try again.</p>
+            <Button onClick={() => refetch()} className="mt-4">Retry</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -155,34 +118,42 @@ const Consultations = () => {
           <CardDescription>Review and respond to client requests for legal consultation</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User Name</TableHead>
-                <TableHead>Document Title</TableHead>
-                <TableHead>Risk Level</TableHead>
-                <TableHead>Requested Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {consultations.map((consultation) => (
-                <TableRow key={consultation.id}>
-                  <TableCell className="font-medium">{consultation.userName}</TableCell>
-                  <TableCell>{consultation.documentTitle}</TableCell>
-                  <TableCell>{getRiskBadge(consultation.riskLevel)}</TableCell>
-                  <TableCell>{new Date(consultation.requestedDate).toLocaleDateString()}</TableCell>
-                  <TableCell>{getStatusBadge(consultation.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => handleViewConsultation(consultation)}>
-                      View
-                    </Button>
-                  </TableCell>
+          {consultations.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No consultation requests yet.</p>
+              <p className="text-sm">When users request your consultation, they will appear here.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User Name</TableHead>
+                  <TableHead>Document Title</TableHead>
+                  <TableHead>Risk Level</TableHead>
+                  <TableHead>Requested Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {consultations.map((consultation: Consultation) => (
+                  <TableRow key={consultation.id}>
+                    <TableCell className="font-medium">{consultation.user_name}</TableCell>
+                    <TableCell>{consultation.document_title}</TableCell>
+                    <TableCell>{getRiskBadge(consultation.risk_level)}</TableCell>
+                    <TableCell>{new Date(consultation.requested_at).toLocaleDateString()}</TableCell>
+                    <TableCell>{getStatusBadge(consultation.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => handleViewConsultation(consultation)}>
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -204,12 +175,12 @@ const Consultations = () => {
                     Client Information
                   </div>
                   <div className="bg-muted p-4 rounded-lg space-y-1">
-                    <p className="font-medium">{selectedConsultation.userName}</p>
-                    <p className="text-sm text-muted-foreground">{selectedConsultation.userEmail}</p>
+                    <p className="font-medium">{selectedConsultation.user_name}</p>
+                    <p className="text-sm text-muted-foreground">{selectedConsultation.user_email}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <Calendar className="h-3 w-3 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">
-                        Requested: {new Date(selectedConsultation.requestedDate).toLocaleDateString()}
+                        Requested: {new Date(selectedConsultation.requested_at).toLocaleDateString()}
                       </span>
                     </div>
                   </div>
@@ -222,54 +193,72 @@ const Consultations = () => {
                     Document Summary
                   </div>
                   <div className="bg-muted p-4 rounded-lg">
-                    <p className="font-medium mb-2">{selectedConsultation.documentTitle}</p>
-                    <p className="text-sm text-muted-foreground">{selectedConsultation.documentSummary}</p>
+                    <p className="font-medium mb-2">{selectedConsultation.document_title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedConsultation.document_summary || 'No summary provided.'}
+                    </p>
                     <div className="mt-2">
-                      {getRiskBadge(selectedConsultation.riskLevel)}
+                      {getRiskBadge(selectedConsultation.risk_level)}
                     </div>
                   </div>
                 </div>
 
                 {/* Top Risk Clauses */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <AlertTriangle className="h-4 w-4" />
-                    Top 3 Risk Clauses
-                  </div>
+                {selectedConsultation.top_risks && selectedConsultation.top_risks.length > 0 && (
                   <div className="space-y-2">
-                    {selectedConsultation.topRisks.map((risk, index) => (
-                      <div key={index} className="bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-destructive/20 text-destructive text-xs font-bold">
-                            {index + 1}
-                          </span>
-                          <p className="text-sm">{risk}</p>
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <AlertTriangle className="h-4 w-4" />
+                      Top Risk Clauses
+                    </div>
+                    <div className="space-y-2">
+                      {selectedConsultation.top_risks.map((risk: string, index: number) => (
+                        <div key={index} className="bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-destructive/20 text-destructive text-xs font-bold">
+                              {index + 1}
+                            </span>
+                            <p className="text-sm">{risk}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </ScrollArea>
           )}
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            {selectedConsultation?.status === "pending" && (
+            {selectedConsultation?.status?.toLowerCase() === "pending" && (
               <>
-                <Button variant="destructive" onClick={handleReject}>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleReject}
+                  disabled={updateStatus.isPending}
+                >
+                  {updateStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Reject
                 </Button>
-                <Button onClick={handleAccept}>
+                <Button 
+                  onClick={handleAccept}
+                  disabled={updateStatus.isPending}
+                >
+                  {updateStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Accept Consultation
                 </Button>
               </>
             )}
-            {selectedConsultation?.status === "in-progress" && (
-              <Button onClick={handleMarkCompleted}>
+            {selectedConsultation?.status?.toLowerCase() === "in-progress" && (
+              <Button 
+                onClick={handleMarkCompleted}
+                disabled={updateStatus.isPending}
+              >
+                {updateStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Mark as Completed
               </Button>
             )}
-            {selectedConsultation?.status === "completed" && (
+            {(selectedConsultation?.status?.toLowerCase() === "completed" || 
+              selectedConsultation?.status?.toLowerCase() === "rejected") && (
               <Button variant="outline" onClick={() => setIsModalOpen(false)}>
                 Close
               </Button>

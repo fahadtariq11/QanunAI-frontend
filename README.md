@@ -166,7 +166,29 @@ npm run dev
 Set frontend `.env`:
 
 ```
-VITE_API_BASE_URL=http://localhost:8000
+# Local backend
+VITE_API_BASE_URL=http://localhost:8000/api
+
+# Production backend (Railway)
+# VITE_API_BASE_URL=https://stunning-healing-production.up.railway.app/api
+```
+
+Deployment (Vercel):
+
+1) Root Directory: set to `frontend/QanunAI` if deploying from monorepo.
+2) Framework Preset: Vite
+3) Build Command: `vite build`
+4) Output Directory: `dist`
+5) Environment Variables: add `VITE_API_BASE_URL=https://stunning-healing-production.up.railway.app/api`
+
+CLI deploy from this folder:
+
+```powershell
+npm install
+npm run build
+npm i -g vercel
+vercel
+vercel --prod
 ```
 
 

@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Calendar, User, Settings, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Calendar, User, Settings, LogOut, Menu, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
@@ -14,6 +14,7 @@ const LawyerLayout = () => {
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/lawyer/dashboard" },
     { icon: Calendar, label: "Consultations", path: "/lawyer/consultations" },
+    { icon: MessageCircle, label: "Messages", path: "/lawyer/messages" },
     { icon: User, label: "My Profile", path: "/lawyer/profile" },
     { icon: Settings, label: "Settings", path: "/lawyer/settings" },
   ];

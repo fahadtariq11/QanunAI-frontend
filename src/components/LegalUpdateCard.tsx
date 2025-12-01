@@ -20,9 +20,9 @@ interface Update {
   publishDate: string;
   category: string;
   importance: string;
-  readTime: string;
-  url: string;
-  tags: string[];
+  readTime?: string;
+  url?: string;
+  tags?: string[];
 }
 
 interface LegalUpdateCardProps {
@@ -107,10 +107,12 @@ export const LegalUpdateCard = ({ update }: LegalUpdateCardProps) => {
                 <Calendar className="h-3 w-3 mr-1" />
                 {formatDate(update.publishDate)}
               </span>
-              <span className="flex items-center">
-                <BookOpen className="h-3 w-3 mr-1" />
-                {update.readTime} read
-              </span>
+              {update.readTime && (
+                <span className="flex items-center">
+                  <BookOpen className="h-3 w-3 mr-1" />
+                  {update.readTime} read
+                </span>
+              )}
             </div>
           </div>
           
@@ -127,14 +129,16 @@ export const LegalUpdateCard = ({ update }: LegalUpdateCardProps) => {
         </CardDescription>
 
         {/* Tags */}
-        <div className="flex flex-wrap gap-1">
-          {update.tags.map((tag, index) => (
-            <Badge key={index} variant="secondary" className="text-xs">
-              <Tag className="h-2 w-2 mr-1" />
-              {tag}
-            </Badge>
-          ))}
-        </div>
+        {update.tags && update.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {update.tags.map((tag, index) => (
+              <Badge key={index} variant="secondary" className="text-xs">
+                <Tag className="h-2 w-2 mr-1" />
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
 
         {/* Action */}
         <div className="flex items-center justify-between pt-2 border-t">

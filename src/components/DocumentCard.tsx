@@ -8,7 +8,8 @@ import {
   CheckCircle,
   Clock,
   Calendar,
-  HardDrive
+  HardDrive,
+  MessageCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useChatbot } from '@/contexts/ChatbotContext';
 
 interface Document {
   id: number;
@@ -40,6 +42,17 @@ interface DocumentCardProps {
 
 export const DocumentCard = ({ document }: DocumentCardProps) => {
   const navigate = useNavigate();
+  const { openWithDocument } = useChatbot();
+
+  const handleAskChatbot = () => {
+    openWithDocument({
+      id: document.id,
+      name: document.name,
+      summary: document.summary,
+      riskLevel: document.riskLevel,
+      riskCount: document.riskCount,
+    });
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -156,17 +169,28 @@ export const DocumentCard = ({ document }: DocumentCardProps) => {
         </CardDescription>
 
         {/* Action Button */}
-        <div className="pt-2">
+        <div className="pt-2 space-y-2">
           {document.status === 'analyzed' ? (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full"
-              onClick={() => navigate(`/app/documents/${document.id}`)}
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              View Analysis
-            </Button>
+            <>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full"
+                onClick={() => navigate(`/app/documents/${document.id}`)}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                View Analysis
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                className="w-full"
+                onClick={handleAskChatbot}
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Ask Chatbot
+              </Button>
+            </>
           ) : document.status === 'processing' ? (
             <Button variant="outline" size="sm" className="w-full" disabled>
               <Clock className="mr-2 h-4 w-4 animate-spin" />

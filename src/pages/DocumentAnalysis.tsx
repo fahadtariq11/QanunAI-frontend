@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   ArrowLeft, 
   FileText, 
@@ -7,15 +7,15 @@ import {
   CheckCircle, 
   Info,
   Download,
-  Share2,
   Calendar,
   HardDrive,
-  TrendingUp,
   Shield,
   Scale,
   Clock,
   Send,
-  Sparkles
+  Sparkles,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useDocument, useDocumentAnalysis, useChatAboutDocument, useAnalyzeDocumentAI } from '@/hooks/useApi';
 
 // Message type for chat
 type ChatMessage = {
@@ -34,171 +35,68 @@ type ChatMessage = {
   source: string;
 };
 
-// Mock analysis data structure
-const analysisData: Record<string, any> = {
-  "1": {
-    id: 1,
-    name: "Employment Agreement - Tech Corp.pdf",
-    uploadDate: "2024-01-15",
-    status: "analyzed",
-    riskLevel: "medium",
-    riskCount: 3,
-    fileSize: "2.4 MB",
-    pages: 12,
-    summary: "Standard employment contract with moderate risk clauses around termination and intellectual property.",
-    overallRiskScore: 6.5,
-    keyFindings: [
-      {
-        title: "Intellectual Property Assignment",
-        severity: "medium",
-        description: "Broad intellectual property assignment clause may extend beyond work scope.",
-        recommendation: "Consider negotiating limitations to work-related IP only.",
-        clause: "Section 4.2"
-      },
-      {
-        title: "Non-Compete Duration",
-        severity: "medium",
-        description: "12-month non-compete period may be excessive depending on jurisdiction.",
-        recommendation: "Review local enforceability and negotiate shorter period if possible.",
-        clause: "Section 7.1"
-      },
-      {
-        title: "At-Will Employment Terms",
-        severity: "low",
-        description: "Standard at-will employment language with limited termination notice.",
-        recommendation: "Request additional notice period or severance terms.",
-        clause: "Section 3.3"
-      }
-    ],
-    documentMetrics: {
-      clarity: 8.2,
-      fairness: 7.5,
-      completeness: 9.1,
-      complexity: 6.8
-    },
-    keyTerms: [
-      { term: "Base Salary", value: "$120,000 annually" },
-      { term: "Notice Period", value: "30 days" },
-      { term: "Non-Compete Duration", value: "12 months" },
-      { term: "Benefits Start", value: "First day of employment" }
-    ]
-  },
-  "3": {
-    id: 3,
-    name: "Non-Disclosure Agreement.pdf",
-    uploadDate: "2024-01-13",
-    status: "analyzed",
-    riskLevel: "low",
-    riskCount: 1,
-    fileSize: "856 KB",
-    pages: 3,
-    summary: "Standard NDA with minimal risk factors.",
-    overallRiskScore: 2.8,
-    keyFindings: [
-      {
-        title: "Confidentiality Term Duration",
-        severity: "low",
-        description: "5-year confidentiality term is standard for this type of agreement.",
-        recommendation: "Term is reasonable and industry-standard.",
-        clause: "Section 2.1"
-      }
-    ],
-    documentMetrics: {
-      clarity: 9.5,
-      fairness: 9.2,
-      completeness: 8.8,
-      complexity: 3.2
-    },
-    keyTerms: [
-      { term: "Confidentiality Period", value: "5 years" },
-      { term: "Permitted Disclosures", value: "Legal requirements only" },
-      { term: "Remedies", value: "Injunctive relief + damages" },
-      { term: "Governing Law", value: "State of Delaware" }
-    ]
-  },
-  "4": {
-    id: 4,
-    name: "Lease Agreement - Office Space.pdf",
-    uploadDate: "2024-01-12",
-    status: "analyzed",
-    riskLevel: "medium",
-    riskCount: 4,
-    fileSize: "3.2 MB",
-    pages: 15,
-    summary: "Commercial lease with moderate risk clauses in maintenance and termination sections.",
-    overallRiskScore: 6.8,
-    keyFindings: [
-      {
-        title: "Triple Net Lease Structure",
-        severity: "medium",
-        description: "Tenant responsible for all operating expenses including property taxes, insurance, and maintenance.",
-        recommendation: "Request cap on annual expense increases and detailed breakdown of common area charges.",
-        clause: "Section 5.1-5.3"
-      },
-      {
-        title: "Personal Guarantee Required",
-        severity: "high",
-        description: "Unlimited personal guarantee from business owners required for lease obligations.",
-        recommendation: "Negotiate limited guarantee or phase-out after 12-24 months of timely payments.",
-        clause: "Section 12.4"
-      },
-      {
-        title: "Maintenance Responsibilities",
-        severity: "medium",
-        description: "Tenant responsible for all repairs including structural elements typically covered by landlord.",
-        recommendation: "Negotiate to limit tenant responsibility to non-structural interior maintenance only.",
-        clause: "Section 8.2"
-      },
-      {
-        title: "Early Termination Penalty",
-        severity: "medium",
-        description: "Significant penalty (12 months rent) for early termination without force majeure exception.",
-        recommendation: "Add force majeure clause and negotiate lower penalty after initial term.",
-        clause: "Section 11.6"
-      }
-    ],
-    documentMetrics: {
-      clarity: 7.8,
-      fairness: 6.5,
-      completeness: 8.9,
-      complexity: 7.5
-    },
-    keyTerms: [
-      { term: "Monthly Base Rent", value: "$8,500 + operating expenses" },
-      { term: "Lease Term", value: "5 years with 5-year option" },
-      { term: "Security Deposit", value: "3 months rent ($25,500)" },
-      { term: "Permitted Use", value: "General office purposes" }
-    ]
-  }
-};
-
 const DocumentAnalysis = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [messageInput, setMessageInput] = useState('');
+  const [sessionId, setSessionId] = useState<string | null>(null);
   
-  const analysis = id ? analysisData[id] : null;
+  // Fetch document and analysis data
+  const documentId = id ? parseInt(id) : 0;
+  const { data: document, isLoading: docLoading } = useDocument(documentId);
+  const { data: analysisData, isLoading: analysisLoading, error: analysisError, refetch: refetchAnalysis } = useDocumentAnalysis(documentId);
+  const chatMutation = useChatAboutDocument();
+  const analyzeMutation = useAnalyzeDocumentAI();
+  
+  const isLoading = docLoading || analysisLoading;
+  
+  // Transform API data to match the UI format
+  const analysis = analysisData ? {
+    id: analysisData.id,
+    name: document?.name || document?.title || 'Document',
+    uploadDate: document?.created_at ? new Date(document.created_at).toLocaleDateString() : 'N/A',
+    status: 'analyzed',
+    riskLevel: analysisData.risk_level || 'medium',
+    riskCount: analysisData.key_findings?.length || 0,
+    fileSize: document?.file_size ? `${(document.file_size / 1024 / 1024).toFixed(2)} MB` : 'N/A',
+    pages: document?.page_count || 'N/A',
+    summary: analysisData.summary || 'No summary available.',
+    overallRiskScore: analysisData.risk_score || 5,
+    keyFindings: analysisData.key_findings || [],
+    documentMetrics: analysisData.document_metrics || {
+      clarity: 7,
+      fairness: 7,
+      completeness: 7,
+      complexity: 5
+    },
+    keyTerms: analysisData.key_terms || []
+  } : null;
 
-  // Mock chat messages for the assistant
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'assistant',
-      content: 'Hello! I\'ve analyzed this document and I\'m ready to answer any questions. How can I help you understand this contract better?',
-      type: 'General QA',
-      source: 'Document'
+  // Chat messages for the assistant - context-aware initial message
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  
+  // Set initial message when document loads
+  useEffect(() => {
+    if (analysis) {
+      setMessages([{
+        role: 'assistant',
+        content: `Hello! I've analyzed "${analysis.name}" and found it has a ${analysis.riskLevel.toUpperCase()} risk level with ${analysis.riskCount} potential issues. I can help you understand any part of this document. What would you like to know?`,
+        type: 'Document QA',
+        source: 'Document'
+      }]);
     }
-  ]);
+  }, [analysis?.name, analysis?.riskLevel, analysis?.riskCount]);
 
   const suggestionChips = [
     'Give me a summary',
     'What are the main risks?',
-    'Explain the termination clause',
+    'Explain the key clauses',
     'Is this agreement safe for me?'
   ];
 
-  // TODO: Replace this with actual API call to /documents/:id/chat
+  // Real API call to chat about the document
   const handleSendMessage = async () => {
-    if (!messageInput.trim()) return;
+    if (!messageInput.trim() || !documentId) return;
 
     const userMessage: ChatMessage = {
       role: 'user',
@@ -209,21 +107,176 @@ const DocumentAnalysis = () => {
 
     // Add user message
     setMessages(prev => [...prev, userMessage]);
+    const currentMessage = messageInput;
     setMessageInput('');
 
-    // Simulate API response delay
-    setTimeout(() => {
+    try {
+      const response = await chatMutation.mutateAsync({
+        documentId,
+        message: currentMessage,
+        sessionId: sessionId || undefined
+      });
+      
+      // Store session ID for conversation continuity
+      if (response.session_id) {
+        setSessionId(response.session_id);
+      }
+      
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: 'This is a placeholder response from the assistant. In production, this will be replaced with real AI analysis of your document.',
-        type: 'General QA',
-        source: 'Document'
+        content: response.content,
+        type: response.type || 'General QA',
+        source: response.source || 'Document'
       };
       setMessages(prev => [...prev, assistantMessage]);
-    }, 500);
+    } catch (error) {
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
+        type: 'Error',
+        source: 'System'
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+    }
   };
 
-  if (!analysis) {
+  const handleReanalyze = async () => {
+    if (!documentId) return;
+    try {
+      await analyzeMutation.mutateAsync({ documentId, force: true });
+      refetchAnalysis();
+    } catch (error) {
+      console.error('Re-analysis failed:', error);
+    }
+  };
+
+  const handleStartAnalysis = async () => {
+    if (!documentId) return;
+    try {
+      await analyzeMutation.mutateAsync({ documentId, force: false });
+      refetchAnalysis();
+    } catch (error) {
+      console.error('Analysis failed:', error);
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (!analysis) return;
+    
+    // Create a printable HTML content
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Document Analysis Report - ${analysis.name}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+          h1 { color: #1a1a2e; border-bottom: 2px solid #4361ee; padding-bottom: 10px; }
+          h2 { color: #4361ee; margin-top: 30px; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .meta { color: #666; font-size: 14px; }
+          .risk-badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold; }
+          .risk-high { background: #fee2e2; color: #dc2626; }
+          .risk-medium { background: #fef3c7; color: #d97706; }
+          .risk-low { background: #d1fae5; color: #059669; }
+          .summary { background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .finding { border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin: 10px 0; }
+          .finding-title { font-weight: bold; margin-bottom: 5px; }
+          .finding-severity { font-size: 12px; padding: 2px 8px; border-radius: 4px; }
+          .recommendation { background: #eff6ff; padding: 10px; border-left: 3px solid #4361ee; margin-top: 10px; }
+          .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
+          .metric { text-align: center; padding: 15px; background: #f8fafc; border-radius: 8px; }
+          .metric-value { font-size: 24px; font-weight: bold; color: #4361ee; }
+          .metric-label { font-size: 12px; color: #666; }
+          .key-terms { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+          .term { background: #f8fafc; padding: 10px; border-radius: 4px; }
+          .term-label { font-size: 12px; color: #666; }
+          .term-value { font-weight: bold; }
+          .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #666; font-size: 12px; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <h1>📄 Document Analysis Report</h1>
+        <div class="header">
+          <div>
+            <strong>${analysis.name}</strong><br>
+            <span class="meta">Analyzed on: ${new Date().toLocaleDateString()}</span>
+          </div>
+          <div>
+            <span class="risk-badge risk-${analysis.riskLevel}">${analysis.riskLevel.toUpperCase()} RISK</span>
+          </div>
+        </div>
+
+        <h2>📊 Summary</h2>
+        <div class="summary">
+          <p>${analysis.summary}</p>
+        </div>
+
+        <h2>📈 Document Metrics</h2>
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-value">${analysis.overallRiskScore}/10</div>
+            <div class="metric-label">Risk Score</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">${Math.round(analysis.documentMetrics.clarity * 10)}/10</div>
+            <div class="metric-label">Clarity</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">${Math.round(analysis.documentMetrics.fairness * 10)}/10</div>
+            <div class="metric-label">Fairness</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">${Math.round(analysis.documentMetrics.completeness * 10)}/10</div>
+            <div class="metric-label">Completeness</div>
+          </div>
+        </div>
+
+        <h2>⚠️ Key Findings (${analysis.keyFindings.length})</h2>
+        ${analysis.keyFindings.map((f: any) => `
+          <div class="finding">
+            <div class="finding-title">
+              ${f.title}
+              <span class="finding-severity risk-${f.severity.toLowerCase()}">${f.severity}</span>
+            </div>
+            <p>${f.description}</p>
+            <div class="recommendation">
+              <strong>💡 Recommendation:</strong> ${f.recommendation}
+            </div>
+          </div>
+        `).join('')}
+
+        <h2>📋 Key Terms</h2>
+        <div class="key-terms">
+          ${analysis.keyTerms.map((t: any) => `
+            <div class="term">
+              <div class="term-label">${t.term}</div>
+              <div class="term-value">${t.value}</div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="footer">
+          Generated by QanunAI - Legal Document Analysis Platform<br>
+          ${new Date().toLocaleString()}
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Open print dialog
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+    }
+  };
+
+  // Loading state
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <Button variant="ghost" onClick={() => navigate('/app/documents')}>
@@ -232,14 +285,59 @@ const DocumentAnalysis = () => {
         </Button>
         <Card className="text-center py-12">
           <CardContent>
-            <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h3 className="text-lg font-heading font-semibold mb-2">Analysis Not Found</h3>
-            <p className="text-foreground-muted mb-4">
-              This document hasn't been analyzed yet or doesn't exist.
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+            <h3 className="text-lg font-heading font-semibold mb-2">Loading Analysis...</h3>
+            <p className="text-foreground-muted">
+              Please wait while we load the document analysis.
             </p>
-            <Button onClick={() => navigate('/app/documents')}>
-              Back to Documents
-            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Error or not found state
+  if (!analysis || analysisError) {
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" onClick={() => navigate('/app/documents')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Documents
+        </Button>
+        <Card className="text-center py-12">
+          <CardContent>
+            <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4" />
+            <h3 className="text-lg font-heading font-semibold mb-2">
+              {document ? 'Analysis Not Ready' : 'Document Not Found'}
+            </h3>
+            <p className="text-foreground-muted mb-4">
+              {document 
+                ? 'This document hasn\'t been analyzed yet. Click below to start AI analysis.'
+                : 'This document doesn\'t exist or you don\'t have access to it.'
+              }
+            </p>
+            {document ? (
+              <Button 
+                onClick={handleStartAnalysis}
+                disabled={analyzeMutation.isPending}
+              >
+                {analyzeMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Start AI Analysis
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button onClick={() => navigate('/app/documents')}>
+                Back to Documents
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -311,13 +409,21 @@ const DocumentAnalysis = () => {
           </div>
           
           <div className="flex gap-2">
-            <Button variant="outline">
-              <Share2 className="mr-2 h-4 w-4" />
-              Share
+            <Button 
+              variant="outline"
+              onClick={handleReanalyze}
+              disabled={analyzeMutation.isPending}
+            >
+              {analyzeMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Re-analyze
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExportPDF}>
               <Download className="mr-2 h-4 w-4" />
-              Export
+              Export PDF
             </Button>
           </div>
         </div>
@@ -326,7 +432,7 @@ const DocumentAnalysis = () => {
       {/* Two Column Layout */}
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left Column - Analysis Tabs */}
-        <div className="flex-1 lg:w-[65%]">
+        <div className="w-full lg:flex-1 lg:max-w-[65%] min-w-0">
           <Tabs defaultValue="analysis" className="w-full">
             <TabsList className="grid w-full max-w-md grid-cols-2">
               <TabsTrigger value="analysis">Analysis</TabsTrigger>
@@ -351,15 +457,16 @@ const DocumentAnalysis = () => {
         <CardContent className="space-y-4">
           <p className="text-foreground-muted leading-relaxed">{analysis.summary}</p>
           
-          <div className="flex items-center gap-6 p-4 bg-muted/50 rounded-lg">
-            <div className="text-center">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 p-4 bg-muted/50 rounded-lg">
+            <div className="text-center flex-shrink-0">
               <div className={cn("text-3xl font-bold", getMetricColor(10 - analysis.overallRiskScore))}>
                 {analysis.overallRiskScore}/10
               </div>
               <div className="text-xs text-foreground-muted mt-1">Overall Risk</div>
             </div>
-            <Separator orientation="vertical" className="h-12" />
-            <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Separator orientation="vertical" className="h-12 hidden sm:block" />
+            <Separator orientation="horizontal" className="w-full sm:hidden" />
+            <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
               <div>
                 <div className={cn("text-xl font-semibold", getMetricColor(analysis.documentMetrics.clarity))}>
                   {analysis.documentMetrics.clarity}
@@ -403,19 +510,14 @@ const DocumentAnalysis = () => {
         <CardContent className="space-y-4">
           {analysis.keyFindings.map((finding: any, index: number) => (
             <div key={index} className="p-4 border border-border rounded-lg space-y-3 hover-lift transition-smooth">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-heading font-semibold">{finding.title}</h4>
-                    <Badge className={cn("text-xs", getSeverityBadgeClass(finding.severity))}>
-                      {finding.severity}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-foreground-muted mb-2">{finding.description}</p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-heading font-semibold">{finding.title}</h4>
+                  <Badge className={cn("text-xs", getSeverityBadgeClass(finding.severity))}>
+                    {finding.severity}
+                  </Badge>
                 </div>
-                <Badge variant="outline" className="text-xs whitespace-nowrap">
-                  {finding.clause}
-                </Badge>
+                <p className="text-sm text-foreground-muted">{finding.description}</p>
               </div>
               
               <div className="pl-4 border-l-2 border-accent">
@@ -448,7 +550,7 @@ const DocumentAnalysis = () => {
             {analysis.keyTerms.map((item: any, index: number) => (
               <div key={index} className="p-4 bg-muted/50 rounded-lg">
                 <div className="text-xs text-foreground-muted mb-1">{item.term}</div>
-                <div className="font-semibold">{item.value}</div>
+                <div className="font-semibold break-words">{item.value}</div>
               </div>
             ))}
           </div>
@@ -602,7 +704,7 @@ const DocumentAnalysis = () => {
         </div>
 
         {/* Right Column - Compact Assistant Panel (Desktop Only) */}
-        <div className="hidden lg:block lg:w-[35%]">
+        <div className="hidden lg:block lg:w-[35%] lg:max-w-[400px] flex-shrink-0">
           <Card className="sticky top-6 flex flex-col h-[calc(100vh-200px)]">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">

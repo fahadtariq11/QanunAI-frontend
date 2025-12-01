@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   User, 
   Mail, 
@@ -11,7 +11,8 @@ import {
   CreditCard,
   Briefcase,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,18 +21,25 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { useCurrentUser, useUpdateProfile } from '@/hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Profile = () => {
+  const { toast } = useToast();
+  const { user: authUser } = useAuth();
+  const { data: userData, isLoading } = useCurrentUser();
+  const updateProfileMutation = useUpdateProfile();
+  
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState({
-    name: "John Doe",
-    email: "john.doe@company.com", 
-    phone: "+1 (555) 123-4567",
-    company: "Tech Innovations Inc.",
-    location: "San Francisco, CA",
-    jobTitle: "Legal Counsel",
-    plan: "Premium",
-    avatar: "/api/placeholder/100/100"
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    company: '',
+    location: '',
+    jobTitle: '',
   });
 
   const [notifications, setNotifications] = useState({
@@ -41,15 +49,89 @@ const Profile = () => {
     marketingEmails: false
   });
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // Here you would typically save to your backend
+  // Update local state when API data loads
+  useEffect(() => {
+    if (userData) {
+      // Parse full_name into firstName and lastName
+      const nameParts = (userData.full_name || '').split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      setProfile({
+        firstName: firstName,
+        lastName: lastName,
+        email: userData.email || '',
+        phone: userData.phone || '',
+        company: userData.company || '',
+        location: userData.location || '',
+        jobTitle: userData.job_title || '',
+      });
+    } else if (authUser) {
+      setProfile(prev => ({
+        ...prev,
+        email: authUser.email || '',
+        firstName: authUser.firstName || '',
+        lastName: authUser.lastName || '',
+      }));
+    }
+  }, [userData, authUser]);
+
+  const handleSave = async () => {
+    try {
+      const fullName = `${profile.firstName} ${profile.lastName}`.trim();
+      await updateProfileMutation.mutateAsync({
+        full_name: fullName,
+        phone: profile.phone,
+        company: profile.company,
+        location: profile.location,
+        job_title: profile.jobTitle,
+      });
+      
+      toast({
+        title: "Profile updated",
+        description: "Your changes have been saved successfully.",
+      });
+      setIsEditing(false);
+    } catch (err: any) {
+      toast({
+        title: "Update failed",
+        description: err.message || "Failed to update profile.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Reset any changes
+    if (userData) {
+      // Parse full_name into firstName and lastName
+      const nameParts = (userData.full_name || '').split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      setProfile({
+        firstName: firstName,
+        lastName: lastName,
+        email: userData.email || '',
+        phone: userData.phone || '',
+        company: userData.company || '',
+        location: userData.location || '',
+        jobTitle: userData.job_title || '',
+      });
+    }
   };
+
+  const fullName = `${profile.firstName} ${profile.lastName}`.trim() || 'User';
+  const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading profile...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -76,8 +158,16 @@ const Profile = () => {
                   </Button>
                 ) : (
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={handleSave}>
-                      <Save className="mr-2 h-4 w-4" />
+                    <Button 
+                      size="sm" 
+                      onClick={handleSave}
+                      disabled={updateProfileMutation.isPending}
+                    >
+                      {updateProfileMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
                       Save
                     </Button>
                     <Button size="sm" variant="outline" onClick={handleCancel}>
@@ -91,9 +181,8 @@ const Profile = () => {
             <CardContent className="space-y-6">
               <div className="flex items-center space-x-4">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={profile.avatar} alt={profile.name} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                    {profile.name.split(' ').map(n => n[0]).join('')}
+                    {initials}
                   </AvatarFallback>
                 </Avatar>
                 {isEditing && (
@@ -105,36 +194,43 @@ const Profile = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="firstName">First Name</Label>
                   {isEditing ? (
                     <Input
-                      id="name"
-                      value={profile.name}
-                      onChange={(e) => setProfile({...profile, name: e.target.value})}
+                      id="firstName"
+                      value={profile.firstName}
+                      onChange={(e) => setProfile({...profile, firstName: e.target.value})}
                     />
                   ) : (
                     <div className="flex items-center p-2 text-sm">
                       <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                      {profile.name}
+                      {profile.firstName || '-'}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  {isEditing ? (
+                    <Input
+                      id="lastName"
+                      value={profile.lastName}
+                      onChange={(e) => setProfile({...profile, lastName: e.target.value})}
+                    />
+                  ) : (
+                    <div className="flex items-center p-2 text-sm">
+                      <User className="h-4 w-4 mr-2 text-muted-foreground" />
+                      {profile.lastName || '-'}
                     </div>
                   )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
-                  {isEditing ? (
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => setProfile({...profile, email: e.target.value})}
-                    />
-                  ) : (
-                    <div className="flex items-center p-2 text-sm">
-                      <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
-                      {profile.email}
-                    </div>
-                  )}
+                  <div className="flex items-center p-2 text-sm">
+                    <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
+                    {profile.email}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -144,11 +240,12 @@ const Profile = () => {
                       id="phone"
                       value={profile.phone}
                       onChange={(e) => setProfile({...profile, phone: e.target.value})}
+                      placeholder="+1 (555) 123-4567"
                     />
                   ) : (
                     <div className="flex items-center p-2 text-sm">
                       <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
-                      {profile.phone}
+                      {profile.phone || '-'}
                     </div>
                   )}
                 </div>
@@ -160,11 +257,12 @@ const Profile = () => {
                       id="jobTitle"
                       value={profile.jobTitle}
                       onChange={(e) => setProfile({...profile, jobTitle: e.target.value})}
+                      placeholder="Legal Counsel"
                     />
                   ) : (
                     <div className="flex items-center p-2 text-sm">
                       <Briefcase className="h-4 w-4 mr-2 text-muted-foreground" />
-                      {profile.jobTitle}
+                      {profile.jobTitle || '-'}
                     </div>
                   )}
                 </div>
@@ -176,11 +274,12 @@ const Profile = () => {
                       id="company"
                       value={profile.company}
                       onChange={(e) => setProfile({...profile, company: e.target.value})}
+                      placeholder="Company Name"
                     />
                   ) : (
                     <div className="flex items-center p-2 text-sm">
                       <Building className="h-4 w-4 mr-2 text-muted-foreground" />
-                      {profile.company}
+                      {profile.company || '-'}
                     </div>
                   )}
                 </div>
@@ -192,11 +291,12 @@ const Profile = () => {
                       id="location"
                       value={profile.location}
                       onChange={(e) => setProfile({...profile, location: e.target.value})}
+                      placeholder="City, Country"
                     />
                   ) : (
                     <div className="flex items-center p-2 text-sm">
                       <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                      {profile.location}
+                      {profile.location || '-'}
                     </div>
                   )}
                 </div>
@@ -281,14 +381,14 @@ const Profile = () => {
           {/* Account Usage / Status */}
           <Card>
             <CardHeader>
-              <CardTitle className="font-heading">Account Usage</CardTitle>
-              <CardDescription>Your current plan and usage statistics</CardDescription>
+              <CardTitle className="font-heading">Account Info</CardTitle>
+              <CardDescription>Your account details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between pb-4 border-b">
-                <span className="text-sm font-medium">Current Plan</span>
+                <span className="text-sm font-medium">Role</span>
                 <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
-                  {profile.plan}
+                  {authUser?.role || 'USER'}
                 </Badge>
               </div>
               
@@ -298,7 +398,7 @@ const Profile = () => {
                     <FileText className="h-4 w-4 mr-2" />
                     Documents Analyzed
                   </div>
-                  <span className="text-lg font-semibold">247</span>
+                  <span className="text-lg font-semibold">-</span>
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -306,7 +406,7 @@ const Profile = () => {
                     <AlertTriangle className="h-4 w-4 mr-2" />
                     Risk Items Found
                   </div>
-                  <span className="text-lg font-semibold">89</span>
+                  <span className="text-lg font-semibold">-</span>
                 </div>
               </div>
               

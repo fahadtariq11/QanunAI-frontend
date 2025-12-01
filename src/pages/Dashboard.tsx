@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
   Users, 
@@ -10,7 +11,8 @@ import {
   MoreVertical,
   FileCheck,
   Clock,
-  Shield
+  Shield,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,81 +20,59 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import heroImage from '@/assets/hero-legal.jpg';
+import { useDocuments, useLawyers } from '@/hooks/useApi';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [uploadProgress, setUploadProgress] = useState(0);
+  
+  const { data: documents = [], isLoading: docsLoading } = useDocuments();
+  const { data: lawyers = [], isLoading: lawyersLoading } = useLawyers();
 
-  // Mock data
+  // Calculate stats from real data
   const stats = [
     {
       title: "Total Documents",
-      value: "247",
+      value: docsLoading ? "-" : documents.length.toString(),
       change: "+12%",
       icon: FileText,
       color: "text-primary"
     },
     {
       title: "High Risk Items",
-      value: "23",
+      value: docsLoading ? "-" : documents.filter((d: any) => d.risk_level === 'high').length.toString(),
       change: "-8%",
       icon: AlertTriangle,
       color: "text-warning"
     },
     {
-      title: "Lawyers Connected",
-      value: "156",
+      title: "Lawyers Available",
+      value: lawyersLoading ? "-" : lawyers.length.toString(),
       change: "+24%",
       icon: Users,
       color: "text-accent"
     },
     {
-      title: "Risk Score",
-      value: "7.2/10",
+      title: "Analyzed",
+      value: docsLoading ? "-" : documents.filter((d: any) => d.status === 'completed' || d.status === 'analyzed').length.toString(),
       change: "+0.3",
       icon: Shield,
       color: "text-secondary"
     }
   ];
 
-  const recentDocuments = [
-    {
-      id: 1,
-      name: "Employment Agreement - Tech Corp",
-      status: "analyzed",
-      riskLevel: "medium",
-      uploadDate: "2024-01-15",
-      riskCount: 3
-    },
-    {
-      id: 2,
-      name: "Service Contract - Marketing Agency",
-      status: "processing",
-      riskLevel: "high",
-      uploadDate: "2024-01-14",
-      riskCount: 7
-    },
-    {
-      id: 3,
-      name: "Non-Disclosure Agreement",
-      status: "analyzed",
-      riskLevel: "low",
-      uploadDate: "2024-01-13",
-      riskCount: 1
-    }
-  ];
+  // Get recent documents (last 3)
+  const recentDocuments = documents.slice(0, 3).map((doc: any) => ({
+    id: doc.id,
+    name: doc.title || doc.name || 'Untitled Document',
+    status: doc.status || 'pending',
+    riskLevel: doc.risk_level || 'unknown',
+    uploadDate: doc.created_at ? new Date(doc.created_at).toLocaleDateString() : '-',
+    riskCount: doc.risk_count || 0
+  }));
 
   const handleFileUpload = () => {
-    // Simulate file upload progress
-    setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
+    navigate('/app/documents');
   };
 
   return (
@@ -126,8 +106,9 @@ const Dashboard = () => {
                 size="lg" 
                 variant="outline"
                 className="border-white text-white hover:bg-white hover:text-primary"
+                onClick={() => navigate('/app/lawyers')}
               >
-                View Demo
+                Find Lawyers
               </Button>
             </div>
           </div>
@@ -190,41 +171,52 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentDocuments.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-surface-alt transition-smooth">
-                    <div className="flex items-center space-x-4">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <FileText className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium font-heading">{doc.name}</h4>
-                        <div className="flex items-center space-x-2 text-sm text-foreground-muted">
-                          <Clock className="h-3 w-3" />
-                          <span>{doc.uploadDate}</span>
+              {docsLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : recentDocuments.length === 0 ? (
+                <div className="text-center py-8 text-foreground-muted">
+                  <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No documents yet. Upload your first document to get started.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentDocuments.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-surface-alt transition-smooth">
+                      <div className="flex items-center space-x-4">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <FileText className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium font-heading">{doc.name}</h4>
+                          <div className="flex items-center space-x-2 text-sm text-foreground-muted">
+                            <Clock className="h-3 w-3" />
+                            <span>{doc.uploadDate}</span>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center space-x-3">
+                        <Badge 
+                          className={`risk-${doc.riskLevel} border-0`}
+                        >
+                          {doc.riskCount} risks
+                        </Badge>
+                        <Badge 
+                          variant={doc.status === 'analyzed' || doc.status === 'completed' ? 'default' : 'secondary'}
+                          className="capitalize"
+                        >
+                          {doc.status === 'analyzed' || doc.status === 'completed' ? <FileCheck className="mr-1 h-3 w-3" /> : <Clock className="mr-1 h-3 w-3" />}
+                          {doc.status}
+                        </Badge>
+                        <Button variant="ghost" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <Badge 
-                        className={`risk-${doc.riskLevel} border-0`}
-                      >
-                        {doc.riskCount} risks
-                      </Badge>
-                      <Badge 
-                        variant={doc.status === 'analyzed' ? 'default' : 'secondary'}
-                        className="capitalize"
-                      >
-                        {doc.status === 'analyzed' ? <FileCheck className="mr-1 h-3 w-3" /> : <Clock className="mr-1 h-3 w-3" />}
-                        {doc.status}
-                      </Badge>
-                      <Button variant="ghost" size="sm">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -237,17 +229,17 @@ const Dashboard = () => {
               <CardTitle className="font-heading">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button className="w-full justify-start gradient-primary">
+              <Button className="w-full justify-start gradient-primary" onClick={() => navigate('/app/documents')}>
                 <Upload className="mr-2 h-4 w-4" />
                 Upload New Document
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/app/lawyers')}>
                 <Search className="mr-2 h-4 w-4" />
                 Find Lawyer
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/app/updates')}>
                 <TrendingUp className="mr-2 h-4 w-4" />
-                View Analytics
+                View Legal Updates
               </Button>
             </CardContent>
           </Card>
@@ -265,26 +257,26 @@ const Dashboard = () => {
                     <div className="w-3 h-3 bg-destructive rounded-full mr-2"></div>
                     High Risk
                   </span>
-                  <span>23</span>
+                  <span>{docsLoading ? '-' : documents.filter((d: any) => d.risk_level === 'high').length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="flex items-center">
                     <div className="w-3 h-3 bg-warning rounded-full mr-2"></div>
                     Medium Risk
                   </span>
-                  <span>67</span>
+                  <span>{docsLoading ? '-' : documents.filter((d: any) => d.risk_level === 'medium').length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="flex items-center">
                     <div className="w-3 h-3 bg-accent rounded-full mr-2"></div>
                     Low Risk
                   </span>
-                  <span>157</span>
+                  <span>{docsLoading ? '-' : documents.filter((d: any) => d.risk_level === 'low').length}</span>
                 </div>
               </div>
               <div className="pt-4 border-t">
-                <div className="text-2xl font-bold font-heading">7.2/10</div>
-                <p className="text-sm text-foreground-muted">Average Risk Score</p>
+                <div className="text-2xl font-bold font-heading">{documents.length}</div>
+                <p className="text-sm text-foreground-muted">Total Documents</p>
               </div>
             </CardContent>
           </Card>
