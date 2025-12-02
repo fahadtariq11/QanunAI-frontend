@@ -51,21 +51,35 @@ const DocumentAnalysis = () => {
   const isLoading = docLoading || analysisLoading;
   
   // Transform API data to match the UI format
-  const analysis = analysisData ? {
-    id: analysisData.id,
-    name: document?.name || document?.title || 'Document',
-    uploadDate: document?.created_at ? new Date(document.created_at).toLocaleDateString() : 'N/A',
-    status: 'analyzed',
-    riskLevel: analysisData.risk_level,
-    riskCount: Array.isArray(analysisData.key_findings) ? analysisData.key_findings.length : 0,
-    fileSize: document?.file_size ? `${(document.file_size / 1024 / 1024).toFixed(2)} MB` : 'N/A',
-    pages: document?.page_count || 'N/A',
-    summary: analysisData.summary,
-    overallRiskScore: analysisData.risk_score,
-    keyFindings: analysisData.key_findings ?? [],
-    documentMetrics: analysisData.document_metrics,
-    keyTerms: analysisData.key_terms ?? []
-  } : null;
+// Transform API data to match the UI format
+const analysis = analysisData ? {
+  id: analysisData.id,
+  name: document?.name || document?.title || 'Document',
+  uploadDate: document?.uploaded_at ? new Date(document.uploaded_at).toLocaleDateString() : 'N/A',
+  status: 'analyzed',
+  riskLevel: analysisData.risk_level,
+  riskCount: Array.isArray(analysisData.key_findings)
+    ? analysisData.key_findings.length
+    : (analysisData.risk_count ?? 0),
+  // Backend already provides a human-readable size like "1.5 MB"
+  fileSize: document?.file_size || 'N/A',
+  // Backend uses `pages`
+  pages: document?.pages ?? 'N/A',
+  summary: analysisData.summary,
+  // Backend field is `overall_risk_score` (0–100, often as string). Normalize to 0–10.
+  overallRiskScore: analysisData.overall_risk_score != null
+    ? Number(analysisData.overall_risk_score) / 10
+    : null,
+  keyFindings: analysisData.key_findings ?? [],
+  // Coerce metrics to numbers (backend typically 0–100)
+  documentMetrics: {
+    clarity: Number(analysisData.document_metrics?.clarity ?? 0),
+    fairness: Number(analysisData.document_metrics?.fairness ?? 0),
+    completeness: Number(analysisData.document_metrics?.completeness ?? 0),
+    complexity: Number(analysisData.document_metrics?.complexity ?? 0),
+  },
+  keyTerms: analysisData.key_terms ?? []
+} : null;
 
   // Chat messages for the assistant - context-aware initial message
   const [messages, setMessages] = useState<ChatMessage[]>([]);
