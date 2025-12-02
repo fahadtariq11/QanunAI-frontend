@@ -56,20 +56,15 @@ const DocumentAnalysis = () => {
     name: document?.name || document?.title || 'Document',
     uploadDate: document?.created_at ? new Date(document.created_at).toLocaleDateString() : 'N/A',
     status: 'analyzed',
-    riskLevel: analysisData.risk_level || 'medium',
-    riskCount: analysisData.key_findings?.length || 0,
+    riskLevel: analysisData.risk_level,
+    riskCount: Array.isArray(analysisData.key_findings) ? analysisData.key_findings.length : 0,
     fileSize: document?.file_size ? `${(document.file_size / 1024 / 1024).toFixed(2)} MB` : 'N/A',
     pages: document?.page_count || 'N/A',
-    summary: analysisData.summary || 'No summary available.',
-    overallRiskScore: analysisData.risk_score || 5,
-    keyFindings: analysisData.key_findings || [],
-    documentMetrics: analysisData.document_metrics || {
-      clarity: 7,
-      fairness: 7,
-      completeness: 7,
-      complexity: 5
-    },
-    keyTerms: analysisData.key_terms || []
+    summary: analysisData.summary,
+    overallRiskScore: analysisData.risk_score,
+    keyFindings: analysisData.key_findings ?? [],
+    documentMetrics: analysisData.document_metrics,
+    keyTerms: analysisData.key_terms ?? []
   } : null;
 
   // Chat messages for the assistant - context-aware initial message
@@ -459,8 +454,13 @@ const DocumentAnalysis = () => {
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 p-4 bg-muted/50 rounded-lg">
             <div className="text-center flex-shrink-0">
-              <div className={cn("text-3xl font-bold", getMetricColor(10 - analysis.overallRiskScore))}>
-                {analysis.overallRiskScore}/10
+              <div className={cn(
+                "text-3xl font-bold",
+                typeof analysis.overallRiskScore === 'number'
+                  ? getMetricColor(10 - analysis.overallRiskScore)
+                  : 'text-foreground-muted'
+              )}>
+                {typeof analysis.overallRiskScore === 'number' ? `${analysis.overallRiskScore}/10` : 'N/A'}
               </div>
               <div className="text-xs text-foreground-muted mt-1">Overall Risk</div>
             </div>
@@ -468,26 +468,46 @@ const DocumentAnalysis = () => {
             <Separator orientation="horizontal" className="w-full sm:hidden" />
             <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
               <div>
-                <div className={cn("text-xl font-semibold", getMetricColor(analysis.documentMetrics.clarity))}>
-                  {analysis.documentMetrics.clarity}
+                <div className={cn(
+                  "text-xl font-semibold",
+                  typeof analysis.documentMetrics?.clarity === 'number'
+                    ? getMetricColor(analysis.documentMetrics.clarity)
+                    : 'text-foreground-muted'
+                )}>
+                  {typeof analysis.documentMetrics?.clarity === 'number' ? analysis.documentMetrics.clarity : '—'}
                 </div>
                 <div className="text-xs text-foreground-muted">Clarity</div>
               </div>
               <div>
-                <div className={cn("text-xl font-semibold", getMetricColor(analysis.documentMetrics.fairness))}>
-                  {analysis.documentMetrics.fairness}
+                <div className={cn(
+                  "text-xl font-semibold",
+                  typeof analysis.documentMetrics?.fairness === 'number'
+                    ? getMetricColor(analysis.documentMetrics.fairness)
+                    : 'text-foreground-muted'
+                )}>
+                  {typeof analysis.documentMetrics?.fairness === 'number' ? analysis.documentMetrics.fairness : '—'}
                 </div>
                 <div className="text-xs text-foreground-muted">Fairness</div>
               </div>
               <div>
-                <div className={cn("text-xl font-semibold", getMetricColor(analysis.documentMetrics.completeness))}>
-                  {analysis.documentMetrics.completeness}
+                <div className={cn(
+                  "text-xl font-semibold",
+                  typeof analysis.documentMetrics?.completeness === 'number'
+                    ? getMetricColor(analysis.documentMetrics.completeness)
+                    : 'text-foreground-muted'
+                )}>
+                  {typeof analysis.documentMetrics?.completeness === 'number' ? analysis.documentMetrics.completeness : '—'}
                 </div>
                 <div className="text-xs text-foreground-muted">Complete</div>
               </div>
               <div>
-                <div className={cn("text-xl font-semibold", getMetricColor(10 - analysis.documentMetrics.complexity))}>
-                  {10 - analysis.documentMetrics.complexity}
+                <div className={cn(
+                  "text-xl font-semibold",
+                  typeof analysis.documentMetrics?.complexity === 'number'
+                    ? getMetricColor(10 - analysis.documentMetrics.complexity)
+                    : 'text-foreground-muted'
+                )}>
+                  {typeof analysis.documentMetrics?.complexity === 'number' ? 10 - analysis.documentMetrics.complexity : '—'}
                 </div>
                 <div className="text-xs text-foreground-muted">Simplicity</div>
               </div>
