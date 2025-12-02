@@ -130,9 +130,6 @@ const Footer = () => {
             <p className="text-foreground-muted text-sm">
               © {new Date().getFullYear()} QanunAI. All rights reserved.
             </p>
-            <p className="text-foreground-muted text-sm mt-2 md:mt-0">
-              Built with ❤️ for legal professionals
-            </p>
           </div>
         </div>
       </div>
