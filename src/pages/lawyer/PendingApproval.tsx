@@ -13,6 +13,8 @@ const PendingApproval = () => {
   const { toast } = useToast();
   const [isChecking, setIsChecking] = useState(false);
 
+  // Keep logout for the manual logout button, but not used for auto-redirect
+
   const checkStatus = useCallback(async () => {
     setIsChecking(true);
     try {
@@ -25,20 +27,16 @@ const PendingApproval = () => {
     }
   }, [updateUser]);
 
-  // Redirect automatically when verified
+  // Redirect automatically when verified - go directly to dashboard, no re-login needed
   useEffect(() => {
     if (lawyerStatus === 'VERIFIED') {
-      const doRedirect = async () => {
-        toast({
-          title: 'Verified',
-          description: 'Your lawyer account is now verified. Redirecting to login…',
-        });
-        await logout();
-        navigate('/auth', { replace: true });
-      };
-      doRedirect();
+      toast({
+        title: 'Verified! 🎉',
+        description: 'Your lawyer account is now verified. Redirecting to your dashboard…',
+      });
+      navigate('/lawyer/dashboard', { replace: true });
     }
-  }, [lawyerStatus, logout, navigate, toast]);
+  }, [lawyerStatus, navigate, toast]);
 
   // Poll periodically while pending
   useEffect(() => {

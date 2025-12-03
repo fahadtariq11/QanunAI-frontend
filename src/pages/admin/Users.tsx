@@ -8,12 +8,24 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  Search
+  Search,
+  Trash2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from '@/hooks/use-toast';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -22,8 +34,12 @@ const AdminUsers = () => {
   const [filter, setFilter] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { toast } = useToast();
 
-  useEffect(() => {
+  const fetchUsers = () => {
     const token = localStorage.getItem('adminToken');
     if (!token) return;
 
@@ -42,7 +58,56 @@ const AdminUsers = () => {
         console.error(err);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchUsers();
   }, [filter]);
+
+  const handleDeleteClick = (user: any) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return;
+    
+    const token = localStorage.getItem('adminToken');
+    if (!token) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin-portal/users/${userToDelete.id}/`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        toast({
+          title: 'User Deleted',
+          description: `${userToDelete.email} has been removed from the platform.`,
+        });
+        fetchUsers(); // Refresh the list
+      } else {
+        const data = await res.json();
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to delete user.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete user. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+    }
+  };
 
   const filteredUsers = users.filter(user => 
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -124,6 +189,7 @@ const AdminUsers = () => {
                     <th className="text-left p-4 text-slate-400 font-medium text-sm">Role</th>
                     <th className="text-left p-4 text-slate-400 font-medium text-sm">Status</th>
                     <th className="text-left p-4 text-slate-400 font-medium text-sm">Joined</th>
+                    <th className="text-right p-4 text-slate-400 font-medium text-sm">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -167,6 +233,16 @@ const AdminUsers = () => {
                           day: 'numeric'
                         })}
                       </td>
+                      <td className="p-4 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteClick(user)}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -186,6 +262,46 @@ const AdminUsers = () => {
       <div className="text-sm text-slate-500 text-right">
         Showing {filteredUsers.length} of {users.length} users
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-slate-800 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete User</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete <span className="text-white font-medium">{userToDelete?.email}</span>? 
+              This action cannot be undone and will permanently remove the user and all their data from the platform.
+              {userToDelete?.role === 'LAWYER' && (
+                <span className="block mt-2 text-amber-400">
+                  This will also delete their lawyer profile and all associated consultations.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600"
+              disabled={deleting}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete User'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

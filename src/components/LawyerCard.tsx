@@ -8,13 +8,28 @@ import {
   Mail,
   Award,
   Languages,
-  Building
+  Building,
+  CalendarPlus,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LawyerChat } from '@/components/LawyerChat';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { useCreateConsultation } from '@/hooks/useApi';
+import { useToast } from '@/hooks/use-toast';
 
 interface Lawyer {
   id: number;
@@ -49,6 +64,11 @@ interface LawyerCardProps {
 
 export const LawyerCard = ({ lawyer }: LawyerCardProps) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [bookingSubject, setBookingSubject] = useState('');
+  const [bookingDescription, setBookingDescription] = useState('');
+  const { toast } = useToast();
+  const createConsultation = useCreateConsultation();
   
   // Normalize field names to handle both API and legacy data formats
   const name = lawyer.full_name || lawyer.name || 'Unknown Lawyer';
@@ -80,6 +100,38 @@ export const LawyerCard = ({ lawyer }: LawyerCardProps) => {
   const handleEmailClick = () => {
     if (email) {
       window.location.href = `mailto:${email}?subject=Legal Consultation Request`;
+    }
+  };
+
+  const handleBookConsultation = async () => {
+    if (!bookingSubject.trim()) {
+      toast({
+        title: 'Subject Required',
+        description: 'Please enter a subject for your consultation request.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await createConsultation.mutateAsync({
+        lawyerId: lawyer.id,
+        subject: bookingSubject.trim(),
+        description: bookingDescription.trim(),
+      });
+      toast({
+        title: 'Consultation Requested! 📅',
+        description: `Your consultation request has been sent to ${name}. They will respond soon.`,
+      });
+      setIsBookingOpen(false);
+      setBookingSubject('');
+      setBookingDescription('');
+    } catch (error: any) {
+      toast({
+        title: 'Request Failed',
+        description: error.message || 'Failed to send consultation request. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -187,18 +239,17 @@ export const LawyerCard = ({ lawyer }: LawyerCardProps) => {
 
         {/* Action Buttons */}
         <div className="flex gap-2 pt-2">
+          <Button 
+            variant="outline" 
+            className="flex-1" 
+            onClick={() => setIsBookingOpen(true)}
+          >
+            <CalendarPlus className="mr-2 h-4 w-4" />
+            Book Consultation
+          </Button>
           <Button className="flex-1 gradient-primary" onClick={() => setIsChatOpen(true)}>
             <MessageCircle className="mr-2 h-4 w-4" />
             Message
-          </Button>
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={handleEmailClick}
-            disabled={!email}
-            title={email ? `Email ${email}` : 'Email not available'}
-          >
-            <Mail className="h-4 w-4" />
           </Button>
         </div>
       </CardContent>
@@ -213,6 +264,62 @@ export const LawyerCard = ({ lawyer }: LawyerCardProps) => {
         onClose={() => setIsChatOpen(false)}
       />
     )}
+
+    {/* Book Consultation Dialog */}
+    <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Book Consultation with {name}</DialogTitle>
+          <DialogDescription>
+            Describe your legal issue briefly. {name} will review your request and respond.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="subject">Subject *</Label>
+            <Input
+              id="subject"
+              placeholder="e.g., Property dispute, Contract review, Legal advice"
+              value={bookingSubject}
+              onChange={(e) => setBookingSubject(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              placeholder="Briefly describe your situation and what kind of help you need..."
+              rows={4}
+              value={bookingDescription}
+              onChange={(e) => setBookingDescription(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsBookingOpen(false)}
+            disabled={createConsultation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleBookConsultation}
+            disabled={createConsultation.isPending || !bookingSubject.trim()}
+            className="gradient-primary"
+          >
+            {createConsultation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              'Send Request'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 };

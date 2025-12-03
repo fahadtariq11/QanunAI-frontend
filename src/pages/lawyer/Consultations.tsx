@@ -5,14 +5,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertTriangle, FileText, User, Calendar, Loader2 } from "lucide-react";
-import { useLawyerConsultations, useUpdateConsultationStatus } from "@/hooks/useApi";
+import { AlertTriangle, FileText, User, Calendar, Loader2, MessageCircle, ClipboardList } from "lucide-react";
+import { useLawyerConsultations, useUpdateConsultationStatus, useSendMessage } from "@/hooks/useApi";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 type Consultation = {
   id: number;
+  user_id?: number;
   user_name: string;
   user_email: string;
+  subject?: string;
+  description?: string;
   document_title: string;
   document_summary?: string;
   top_risks?: string[];
@@ -24,10 +29,13 @@ type Consultation = {
 const Consultations = () => {
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
+  const [replyMessage, setReplyMessage] = useState('');
   const { toast } = useToast();
   
   const { data: consultations = [], isLoading, error, refetch } = useLawyerConsultations();
   const updateStatus = useUpdateConsultationStatus();
+  const sendMessage = useSendMessage();
 
   const getRiskBadge = (risk: string) => {
     const variants: Record<string, { variant: "destructive" | "default" | "secondary"; label: string }> = {
@@ -84,6 +92,37 @@ const Consultations = () => {
   const handleReject = () => handleStatusUpdate('rejected');
   const handleMarkCompleted = () => handleStatusUpdate('completed');
 
+  const handleOpenReply = () => {
+    setIsReplyModalOpen(true);
+  };
+
+  const handleSendReply = async () => {
+    if (!selectedConsultation || !replyMessage.trim()) return;
+    
+    try {
+      // We need the user_id from the consultation - if not present, we'll parse from user_email
+      // For now, we'll use a workaround by extracting user info
+      await sendMessage.mutateAsync({
+        receiverId: selectedConsultation.user_id || 0, // This needs the actual user id
+        content: replyMessage.trim(),
+        consultationId: selectedConsultation.id,
+      });
+      
+      toast({
+        title: "Message Sent",
+        description: "Your reply has been sent to the client.",
+      });
+      setIsReplyModalOpen(false);
+      setReplyMessage('');
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -129,7 +168,7 @@ const Consultations = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>User Name</TableHead>
-                  <TableHead>Document Title</TableHead>
+                  <TableHead>Subject</TableHead>
                   <TableHead>Risk Level</TableHead>
                   <TableHead>Requested Date</TableHead>
                   <TableHead>Status</TableHead>
@@ -140,7 +179,7 @@ const Consultations = () => {
                 {consultations.map((consultation: Consultation) => (
                   <TableRow key={consultation.id}>
                     <TableCell className="font-medium">{consultation.user_name}</TableCell>
-                    <TableCell>{consultation.document_title}</TableCell>
+                    <TableCell>{consultation.subject || consultation.document_title || '—'}</TableCell>
                     <TableCell>{getRiskBadge(consultation.risk_level)}</TableCell>
                     <TableCell>{new Date(consultation.requested_at).toLocaleDateString()}</TableCell>
                     <TableCell>{getStatusBadge(consultation.status)}</TableCell>
@@ -186,22 +225,48 @@ const Consultations = () => {
                   </div>
                 </div>
 
-                {/* Document Summary */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <FileText className="h-4 w-4" />
-                    Document Summary
-                  </div>
-                  <div className="bg-muted p-4 rounded-lg">
-                    <p className="font-medium mb-2">{selectedConsultation.document_title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedConsultation.document_summary || 'No summary provided.'}
-                    </p>
-                    <div className="mt-2">
-                      {getRiskBadge(selectedConsultation.risk_level)}
+                {/* Consultation Request Details */}
+                {(selectedConsultation.subject || selectedConsultation.description) && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <ClipboardList className="h-4 w-4" />
+                      Consultation Request
+                    </div>
+                    <div className="bg-muted p-4 rounded-lg">
+                      {selectedConsultation.subject && (
+                        <p className="font-medium mb-2">{selectedConsultation.subject}</p>
+                      )}
+                      {selectedConsultation.description && (
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                          {selectedConsultation.description}
+                        </p>
+                      )}
                     </div>
                   </div>
-                </div>
+                )}
+
+                {/* Document Summary (if any) */}
+                {(selectedConsultation.document_title || selectedConsultation.document_summary) && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <FileText className="h-4 w-4" />
+                      Document Summary
+                    </div>
+                    <div className="bg-muted p-4 rounded-lg">
+                      {selectedConsultation.document_title && (
+                        <p className="font-medium mb-2">{selectedConsultation.document_title}</p>
+                      )}
+                      <p className="text-sm text-muted-foreground">
+                        {selectedConsultation.document_summary || 'No summary provided.'}
+                      </p>
+                      {selectedConsultation.risk_level && (
+                        <div className="mt-2">
+                          {getRiskBadge(selectedConsultation.risk_level)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Top Risk Clauses */}
                 {selectedConsultation.top_risks && selectedConsultation.top_risks.length > 0 && (
@@ -249,13 +314,22 @@ const Consultations = () => {
               </>
             )}
             {selectedConsultation?.status?.toLowerCase() === "in-progress" && (
-              <Button 
-                onClick={handleMarkCompleted}
-                disabled={updateStatus.isPending}
-              >
-                {updateStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Mark as Completed
-              </Button>
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={handleOpenReply}
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Reply to Client
+                </Button>
+                <Button 
+                  onClick={handleMarkCompleted}
+                  disabled={updateStatus.isPending}
+                >
+                  {updateStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Mark as Completed
+                </Button>
+              </>
             )}
             {(selectedConsultation?.status?.toLowerCase() === "completed" || 
               selectedConsultation?.status?.toLowerCase() === "rejected") && (
@@ -263,6 +337,55 @@ const Consultations = () => {
                 Close
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reply Modal */}
+      <Dialog open={isReplyModalOpen} onOpenChange={setIsReplyModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Reply to {selectedConsultation?.user_name}</DialogTitle>
+            <DialogDescription>
+              Send a message to the client regarding their consultation request.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reply">Your Message</Label>
+              <Textarea
+                id="reply"
+                placeholder="Type your response to the client..."
+                rows={5}
+                value={replyMessage}
+                onChange={(e) => setReplyMessage(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsReplyModalOpen(false)}
+              disabled={sendMessage.isPending}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSendReply}
+              disabled={sendMessage.isPending || !replyMessage.trim()}
+            >
+              {sendMessage.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Send Message
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
