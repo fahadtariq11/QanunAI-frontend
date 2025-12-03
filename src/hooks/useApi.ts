@@ -375,3 +375,16 @@ export function useClearChatHistory() {
     mutationFn: (sessionId: string) => api.clearChatHistory(sessionId),
   });
 }
+
+// ============================================================================
+// LAWYER SEARCH AI HOOKS
+// ============================================================================
+
+export function useLawyerSearchChat() {
+  return useMutation({
+    mutationFn: ({ message, sessionId }: { 
+      message: string; 
+      sessionId?: string;
+    }) => api.searchLawyersChat(message, sessionId),
+  });
+}

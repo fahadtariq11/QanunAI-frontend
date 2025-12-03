@@ -16,6 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
 import DocumentAnalysis from "./pages/DocumentAnalysis";
 import Lawyers from "./pages/Lawyers";
+import LawyerSearch from "./pages/LawyerSearch";
 import Updates from "./pages/Updates";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="documents" element={<Documents />} />
               <Route path="documents/:id" element={<DocumentAnalysis />} />
               <Route path="lawyers" element={<Lawyers />} />
+              <Route path="find-lawyer" element={<LawyerSearch />} />
               <Route path="messages" element={<Messages />} />
               <Route path="updates" element={<Updates />} />
               <Route path="profile" element={<Profile />} />

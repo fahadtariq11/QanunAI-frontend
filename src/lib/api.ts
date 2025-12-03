@@ -439,6 +439,20 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // ============================================================================
+  // LAWYER SEARCH AI ENDPOINTS
+  // ============================================================================
+
+  async searchLawyersChat(message: string, sessionId?: string): Promise<LawyerSearchResponse> {
+    return this.request<LawyerSearchResponse>('/ai/lawyer-search/', {
+      method: 'POST',
+      body: JSON.stringify({
+        message,
+        session_id: sessionId,
+      }),
+    });
+  }
 }
 
 // AI Types
@@ -503,6 +517,50 @@ interface ChatResponse {
   disclaimer?: string;
 }
 
+// Lawyer Search Types
+interface LawyerSearchResult {
+  id: number;
+  full_name: string;
+  email?: string;
+  title: string;
+  firm?: string;
+  specializations: string[];
+  primary_specialization?: string;
+  city?: string;
+  jurisdiction?: string;
+  experience_years: number;
+  hourly_rate: number;
+  rating: number;
+  review_count: number;
+  bio?: string;
+  languages: string[];
+  response_time?: string;
+  similarity_score: number;
+  match_reason: string;
+}
+
+interface LawyerSearchResponse {
+  role: 'assistant';
+  content: string;
+  type: string;
+  lawyers: LawyerSearchResult[];
+  follow_up_questions: string[];
+  needs_clarification: boolean;
+  search_filters?: Record<string, any>;
+  session_id: string;
+}
+
 // Export singleton instance
 export const api = new ApiClient(API_BASE_URL);
-export type { User, LoginResponse, RegisterResponse, ApiError, Role, LawyerRegistrationData };
+export type { 
+  User, 
+  LoginResponse, 
+  RegisterResponse, 
+  ApiError, 
+  Role, 
+  LawyerRegistrationData,
+  LawyerSearchResult,
+  LawyerSearchResponse,
+  ChatResponse,
+  Citation,
+};

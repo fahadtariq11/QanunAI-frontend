@@ -12,14 +12,17 @@ import {
   XCircle,
   BookOpen,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Scale
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useChatbot, type ChatMessage, type Citation } from '@/contexts/ChatbotContext';
-import { useChatWithAI, useChatAboutDocument } from '@/hooks/useApi';
+import { useChatWithAI, useChatAboutDocument, useLawyerSearchChat } from '@/hooks/useApi';
+import { LawyerSearchCard } from '@/components/LawyerSearchCard';
+import type { LawyerSearchResult } from '@/lib/api';
 
 // Simulated AI responses for the chatbot
 const SIMULATED_RESPONSES = [
@@ -128,6 +131,31 @@ export const Chatbot = () => {
   // AI chat mutations
   const chatWithAI = useChatWithAI();
   const chatAboutDoc = useChatAboutDocument();
+  const lawyerSearch = useLawyerSearchChat();
+  const [lawyerSearchSessionId, setLawyerSearchSessionId] = useState<string | null>(null);
+
+  // Keywords that indicate user wants to find a lawyer
+  const isLawyerSearchQuery = (msg: string): boolean => {
+    const lowerMsg = msg.toLowerCase();
+    const lawyerKeywords = ['find lawyer', 'search lawyer', 'need lawyer', 'looking for lawyer', 
+                           'find attorney', 'need attorney', 'recommend lawyer', 'suggest lawyer',
+                           'lawyer for', 'attorney for', 'legal help with', 'need legal help'];
+    const legalIssues = ['property dispute', 'divorce', 'custody', 'criminal', 'contract', 
+                        'business', 'tax', 'immigration', 'employment', 'family law',
+                        'civil case', 'lawsuit', 'bail', 'inheritance', 'real estate'];
+    
+    // Check for explicit lawyer search intent
+    if (lawyerKeywords.some(kw => lowerMsg.includes(kw))) return true;
+    
+    // Check for legal issues combined with help-seeking phrases
+    const helpPhrases = ['need help', 'looking for', 'find', 'recommend', 'suggest', 'who can help'];
+    if (legalIssues.some(issue => lowerMsg.includes(issue)) && 
+        helpPhrases.some(phrase => lowerMsg.includes(phrase))) {
+      return true;
+    }
+    
+    return false;
+  };
 
   const toggleCitation = (messageId: string) => {
     setExpandedCitations(prev => {
@@ -178,34 +206,73 @@ export const Chatbot = () => {
     try {
       let response;
       
-      if (documentContext?.id) {
+      // Check if this is a lawyer search query (and not in document context)
+      if (!documentContext && isLawyerSearchQuery(currentMessage)) {
+        // Use lawyer search AI
+        const searchResponse = await lawyerSearch.mutateAsync({
+          message: currentMessage,
+          sessionId: lawyerSearchSessionId || undefined
+        });
+        
+        // Store session ID for conversation continuity
+        if (searchResponse.session_id) {
+          setLawyerSearchSessionId(searchResponse.session_id);
+        }
+        
+        const assistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: searchResponse.content,
+          timestamp: new Date(),
+          citations: [],
+          lawyers: searchResponse.lawyers,
+          followUpQuestions: searchResponse.follow_up_questions,
+          messageType: 'lawyer-search'
+        };
+        addMessage(assistantMessage);
+        
+      } else if (documentContext?.id) {
         // Chat about a specific document
         response = await chatAboutDoc.mutateAsync({
           documentId: documentContext.id,
           message: currentMessage,
           sessionId: sessionId || undefined
         });
+        
+        // Store session ID for conversation continuity
+        if (response.session_id) {
+          setSessionId(response.session_id);
+        }
+        
+        const assistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: response.content,
+          timestamp: new Date(),
+          citations: response.citations || []
+        };
+        addMessage(assistantMessage);
       } else {
         // General AI chat
         response = await chatWithAI.mutateAsync({
           message: currentMessage,
           sessionId: sessionId || undefined
         });
+        
+        // Store session ID for conversation continuity
+        if (response.session_id) {
+          setSessionId(response.session_id);
+        }
+        
+        const assistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: response.content,
+          timestamp: new Date(),
+          citations: response.citations || []
+        };
+        addMessage(assistantMessage);
       }
-      
-      // Store session ID for conversation continuity
-      if (response.session_id) {
-        setSessionId(response.session_id);
-      }
-      
-      const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.content,
-        timestamp: new Date(),
-        citations: response.citations || []
-      };
-      addMessage(assistantMessage);
     } catch (error) {
       // Fallback to simulated response if API fails
       const fallbackResponse = getSimulatedResponse(currentMessage, documentContext);
@@ -356,6 +423,41 @@ export const Chatbot = () => {
                   )}
                 >
                   <p className="text-sm whitespace-pre-line break-words">{message.content}</p>
+                  
+                  {/* Lawyer Search Results */}
+                  {message.role === 'assistant' && message.lawyers && message.lawyers.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {message.lawyers.slice(0, 3).map((lawyer) => (
+                        <LawyerSearchCard 
+                          key={lawyer.id} 
+                          lawyer={lawyer} 
+                          compact 
+                        />
+                      ))}
+                      {message.lawyers.length > 3 && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          +{message.lawyers.length - 3} more lawyers found
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Follow-up Question Chips */}
+                  {message.role === 'assistant' && message.followUpQuestions && message.followUpQuestions.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {message.followUpQuestions.slice(0, 3).map((question, idx) => (
+                        <Button
+                          key={idx}
+                          variant="outline"
+                          size="sm"
+                          className="h-auto py-1 px-2 text-xs font-normal"
+                          onClick={() => setInputValue(question)}
+                        >
+                          {question}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                   
                   {/* Citations Section */}
                   {message.role === 'assistant' && message.citations && message.citations.length > 0 && (

@@ -14,7 +14,8 @@ import {
   Scale,
   Shield,
   LogOut,
-  MessageCircle
+  MessageCircle,
+  Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,7 @@ const Layout = () => {
   const navigation = [
     { name: 'Dashboard', href: '/app', icon: LayoutDashboard },
     { name: 'Documents', href: '/app/documents', icon: FileText },
+    { name: 'Find Lawyer', href: '/app/find-lawyer', icon: Search },
     { name: 'Lawyers', href: '/app/lawyers', icon: Users },
     { name: 'Messages', href: '/app/messages', icon: MessageCircle },
     { name: 'Legal Updates', href: '/app/updates', icon: Newspaper },

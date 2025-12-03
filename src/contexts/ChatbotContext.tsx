@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import type { LawyerSearchResult } from '@/lib/api';
 
 interface DocumentContext {
   id: number;
@@ -22,6 +23,10 @@ interface ChatMessage {
   content: string;
   timestamp: Date;
   citations?: Citation[];
+  // Lawyer search specific fields
+  lawyers?: LawyerSearchResult[];
+  followUpQuestions?: string[];
+  messageType?: 'general' | 'lawyer-search' | 'document';
 }
 
 interface ChatbotContextType {
