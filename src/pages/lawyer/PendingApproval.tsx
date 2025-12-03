@@ -38,6 +38,11 @@ const PendingApproval = () => {
     }
   }, [lawyerStatus, navigate, toast]);
 
+  // Check status immediately on mount/refresh
+  useEffect(() => {
+    checkStatus();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Poll periodically while pending
   useEffect(() => {
     if (lawyerStatus === 'PENDING') {
