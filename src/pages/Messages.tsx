@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +21,27 @@ interface Conversation {
 
 const Messages = () => {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [directChatUserId, setDirectChatUserId] = useState<number | null>(null);
   const { data: conversations = [], isLoading } = useConversations();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Handle userId query parameter to open chat directly
+  useEffect(() => {
+    const userId = searchParams.get('userId');
+    if (userId) {
+      const userIdNum = parseInt(userId);
+      // First try to find existing conversation
+      const existingConversation = conversations.find((c: Conversation) => c.user_id === userIdNum);
+      if (existingConversation) {
+        setSelectedConversation(existingConversation);
+      } else {
+        // Open chat directly with this user (new conversation)
+        setDirectChatUserId(userIdNum);
+      }
+      // Clear the query param
+      setSearchParams({});
+    }
+  }, [searchParams, conversations, setSearchParams]);
   
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -119,6 +140,15 @@ const Messages = () => {
           recipientName={selectedConversation.user_name}
           recipientAvatar={selectedConversation.user_avatar || undefined}
           onClose={() => setSelectedConversation(null)}
+        />
+      )}
+
+      {/* Direct chat opened from consultation or URL param */}
+      {directChatUserId && !selectedConversation && (
+        <LawyerChat
+          recipientId={directChatUserId}
+          recipientName="Client"
+          onClose={() => setDirectChatUserId(null)}
         />
       )}
     </div>

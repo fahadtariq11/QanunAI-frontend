@@ -313,14 +313,18 @@ class ApiClient {
     return this.request<any>(`/consultations/${id}/`);
   }
 
-  async createConsultation(lawyerId: number, subject: string, description: string): Promise<any> {
+  async createConsultation(lawyerId: number, subject: string, description: string, documentId?: number): Promise<any> {
+    const body: any = { 
+      lawyer_id: lawyerId, 
+      subject,
+      description 
+    };
+    if (documentId) {
+      body.document_id = documentId;
+    }
     return this.request<any>('/consultations/', {
       method: 'POST',
-      body: JSON.stringify({ 
-        lawyer_id: lawyerId, 
-        subject,
-        description 
-      }),
+      body: JSON.stringify(body),
     });
   }
 

@@ -205,8 +205,12 @@ export function useCreateConsultation() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ lawyerId, subject, description }: { lawyerId: number; subject: string; description: string }) =>
-      api.createConsultation(lawyerId, subject, description),
+    mutationFn: ({ lawyerId, subject, description, documentId }: { 
+      lawyerId: number; 
+      subject: string; 
+      description: string;
+      documentId?: number;
+    }) => api.createConsultation(lawyerId, subject, description, documentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['consultations'] });
     },

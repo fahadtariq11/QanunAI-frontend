@@ -5,12 +5,13 @@ import {
   Clock, 
   DollarSign, 
   MessageCircle, 
-  Mail,
   Award,
   Languages,
   Building,
   CalendarPlus,
-  Loader2
+  Loader2,
+  Paperclip,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +29,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { useCreateConsultation } from '@/hooks/useApi';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useCreateConsultation, useDocuments } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
 
 interface Lawyer {
@@ -67,8 +75,10 @@ export const LawyerCard = ({ lawyer }: LawyerCardProps) => {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingSubject, setBookingSubject] = useState('');
   const [bookingDescription, setBookingDescription] = useState('');
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string>('');
   const { toast } = useToast();
   const createConsultation = useCreateConsultation();
+  const { data: userDocuments = [] } = useDocuments();
   
   // Normalize field names to handle both API and legacy data formats
   const name = lawyer.full_name || lawyer.name || 'Unknown Lawyer';
@@ -118,6 +128,7 @@ export const LawyerCard = ({ lawyer }: LawyerCardProps) => {
         lawyerId: lawyer.id,
         subject: bookingSubject.trim(),
         description: bookingDescription.trim(),
+        documentId: selectedDocumentId ? parseInt(selectedDocumentId) : undefined,
       });
       toast({
         title: 'Consultation Requested! 📅',
@@ -126,6 +137,7 @@ export const LawyerCard = ({ lawyer }: LawyerCardProps) => {
       setIsBookingOpen(false);
       setBookingSubject('');
       setBookingDescription('');
+      setSelectedDocumentId('');
     } catch (error: any) {
       toast({
         title: 'Request Failed',
@@ -271,7 +283,7 @@ export const LawyerCard = ({ lawyer }: LawyerCardProps) => {
         <DialogHeader>
           <DialogTitle>Book Consultation with {name}</DialogTitle>
           <DialogDescription>
-            Describe your legal issue briefly. {name} will review your request and respond.
+            Describe your legal issue briefly. You can also attach a document for review.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -293,6 +305,47 @@ export const LawyerCard = ({ lawyer }: LawyerCardProps) => {
               value={bookingDescription}
               onChange={(e) => setBookingDescription(e.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="document">Attach Document (Optional)</Label>
+            {userDocuments.length > 0 ? (
+              <Select value={selectedDocumentId} onValueChange={setSelectedDocumentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a document to attach" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No document</SelectItem>
+                  {userDocuments.map((doc: any) => (
+                    <SelectItem key={doc.id} value={doc.id.toString()}>
+                      <div className="flex items-center gap-2">
+                        <Paperclip className="h-3 w-3" />
+                        {doc.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No documents uploaded yet. You can upload documents from the Documents page.
+              </p>
+            )}
+            {selectedDocumentId && selectedDocumentId !== 'none' && (
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                <Paperclip className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm flex-1">
+                  {userDocuments.find((d: any) => d.id.toString() === selectedDocumentId)?.name}
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0"
+                  onClick={() => setSelectedDocumentId('')}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
         <DialogFooter>
