@@ -181,7 +181,7 @@ const LawyerSearch = () => {
                 </div>
                 
                 {/* Lawyer Cards */}
-                {message.role === 'assistant' && message.lawyers && message.lawyers.length > 0 && (
+                {message.role === 'assistant' && message.lawyers && Array.isArray(message.lawyers) && message.lawyers.length > 0 && (
                   <div className="mt-4 space-y-3 w-full">
                     {message.lawyers.map((lawyer) => (
                       <LawyerSearchCard 
@@ -193,7 +193,7 @@ const LawyerSearch = () => {
                 )}
                 
                 {/* Quick Reply Chips */}
-                {message.role === 'assistant' && message.followUpQuestions && message.followUpQuestions.length > 0 && (
+                {message.role === 'assistant' && message.followUpQuestions && Array.isArray(message.followUpQuestions) && message.followUpQuestions.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {message.followUpQuestions.map((question, idx) => (
                       <Button

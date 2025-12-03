@@ -425,7 +425,7 @@ export const Chatbot = () => {
                   <p className="text-sm whitespace-pre-line break-words">{message.content}</p>
                   
                   {/* Lawyer Search Results */}
-                  {message.role === 'assistant' && message.lawyers && message.lawyers.length > 0 && (
+                  {message.role === 'assistant' && message.lawyers && Array.isArray(message.lawyers) && message.lawyers.length > 0 && (
                     <div className="mt-3 space-y-2">
                       {message.lawyers.slice(0, 3).map((lawyer) => (
                         <LawyerSearchCard 
@@ -443,7 +443,7 @@ export const Chatbot = () => {
                   )}
                   
                   {/* Follow-up Question Chips */}
-                  {message.role === 'assistant' && message.followUpQuestions && message.followUpQuestions.length > 0 && (
+                  {message.role === 'assistant' && message.followUpQuestions && Array.isArray(message.followUpQuestions) && message.followUpQuestions.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {message.followUpQuestions.slice(0, 3).map((question, idx) => (
                         <Button

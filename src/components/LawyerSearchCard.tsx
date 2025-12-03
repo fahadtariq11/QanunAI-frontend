@@ -47,7 +47,7 @@ export const LawyerSearchCard = ({ lawyer, compact = false }: LawyerSearchCardPr
   const getInitials = (name: string) => 
     name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   
-  const matchPercentage = Math.round(lawyer.similarity_score * 100);
+  const matchPercentage = Math.round((lawyer.similarity_score || 0) * 100);
 
   const handleBookConsultation = async () => {
     if (!bookingSubject.trim()) {
@@ -107,36 +107,40 @@ export const LawyerSearchCard = ({ lawyer, compact = false }: LawyerSearchCardPr
               
               {/* Title and firm */}
               <p className="text-sm text-muted-foreground">
-                {lawyer.title}
+                {lawyer.title || 'Legal Professional'}
                 {lawyer.firm && <span> at {lawyer.firm}</span>}
               </p>
               
               {/* Match Reason - highlighted prominently */}
-              <div className="mt-2 p-2.5 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border-l-3 border-l-primary">
-                <p className="text-sm">
-                  <Sparkles className="h-3.5 w-3.5 inline mr-1.5 text-primary" />
-                  <span className="font-medium text-primary">Why I recommend: </span>
-                  <span className="text-foreground">{lawyer.match_reason}</span>
-                </p>
-              </div>
+              {lawyer.match_reason && (
+                <div className="mt-2 p-2.5 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border-l-3 border-l-primary">
+                  <p className="text-sm">
+                    <Sparkles className="h-3.5 w-3.5 inline mr-1.5 text-primary" />
+                    <span className="font-medium text-primary">Why I recommend: </span>
+                    <span className="text-foreground">{lawyer.match_reason}</span>
+                  </p>
+                </div>
+              )}
               
               {/* Quick Stats */}
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-muted-foreground">
                 <span className="flex items-center">
                   <Star className="h-3.5 w-3.5 mr-1 fill-yellow-400 text-yellow-400" />
-                  {lawyer.rating.toFixed(1)} ({lawyer.review_count} reviews)
+                  {(lawyer.rating || 0).toFixed(1)} ({lawyer.review_count || 0} reviews)
                 </span>
-                <span className="flex items-center">
-                  <Award className="h-3.5 w-3.5 mr-1" />
-                  {lawyer.experience_years} years exp.
-                </span>
+                {(lawyer.experience_years ?? 0) > 0 && (
+                  <span className="flex items-center">
+                    <Award className="h-3.5 w-3.5 mr-1" />
+                    {lawyer.experience_years} years exp.
+                  </span>
+                )}
                 {lawyer.city && (
                   <span className="flex items-center">
                     <MapPin className="h-3.5 w-3.5 mr-1" />
                     {lawyer.city}
                   </span>
                 )}
-                {lawyer.hourly_rate > 0 && (
+                {(lawyer.hourly_rate ?? 0) > 0 && (
                   <span className="flex items-center">
                     <DollarSign className="h-3.5 w-3.5 mr-1" />
                     ${lawyer.hourly_rate}/hr
@@ -151,16 +155,16 @@ export const LawyerSearchCard = ({ lawyer, compact = false }: LawyerSearchCardPr
               </div>
               
               {/* Specializations */}
-              {lawyer.specializations.length > 0 && (
+              {(lawyer.specializations?.length ?? 0) > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  {lawyer.specializations.slice(0, 3).map((spec, idx) => (
+                  {lawyer.specializations!.slice(0, 3).map((spec, idx) => (
                     <Badge key={idx} variant="outline" className="text-xs font-normal">
                       {spec}
                     </Badge>
                   ))}
-                  {lawyer.specializations.length > 3 && (
+                  {lawyer.specializations!.length > 3 && (
                     <Badge variant="outline" className="text-xs font-normal">
-                      +{lawyer.specializations.length - 3} more
+                      +{lawyer.specializations!.length - 3} more
                     </Badge>
                   )}
                 </div>

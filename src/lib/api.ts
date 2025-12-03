@@ -522,29 +522,29 @@ interface LawyerSearchResult {
   id: number;
   full_name: string;
   email?: string;
-  title: string;
+  title?: string;
   firm?: string;
-  specializations: string[];
+  specializations?: string[];
   primary_specialization?: string;
   city?: string;
   jurisdiction?: string;
-  experience_years: number;
-  hourly_rate: number;
-  rating: number;
-  review_count: number;
+  experience_years?: number;
+  hourly_rate?: number;
+  rating?: number;
+  review_count?: number;
   bio?: string;
-  languages: string[];
+  languages?: string[];
   response_time?: string;
-  similarity_score: number;
-  match_reason: string;
+  similarity_score?: number;
+  match_reason?: string;
 }
 
 interface LawyerSearchResponse {
   role: 'assistant';
   content: string;
   type: string;
-  lawyers: LawyerSearchResult[];
-  follow_up_questions: string[];
+  lawyers: LawyerSearchResult[] | null;
+  follow_up_questions: string[] | null;
   needs_clarification: boolean;
   search_filters?: Record<string, any>;
   session_id: string;
