@@ -1,11 +1,44 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Scale, Clock, CheckCircle2, XCircle, LogOut, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffect, useCallback } from 'react';
+import { api } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 const PendingApproval = () => {
-  const { user, lawyerStatus, logout } = useAuth();
+  const { user, lawyerStatus, logout, updateUser } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const checkStatus = useCallback(async () => {
+    try {
+      const freshUser = await api.getCurrentUser();
+      updateUser(freshUser);
+      if (freshUser.lawyer_status === 'VERIFIED') {
+        toast({
+          title: 'Verified',
+          description: 'Your lawyer account is now verified. Redirecting to login…',
+        });
+        // Ensure clean session by logging out and sending to login
+        await logout();
+        navigate('/auth');
+      }
+    } catch (e) {
+      // ignore errors silently for polling/button checks
+    }
+  }, [logout, navigate, updateUser, toast]);
+
+  // Poll periodically while pending
+  useEffect(() => {
+    if (lawyerStatus === 'PENDING') {
+      const id = setInterval(() => {
+        checkStatus();
+      }, 10000); // every 10s
+      return () => clearInterval(id);
+    }
+  }, [lawyerStatus, checkStatus]);
 
   const handleLogout = async () => {
     await logout();
@@ -58,7 +91,7 @@ const PendingApproval = () => {
           borderColor: 'border-amber-200',
           action: (
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => window.location.reload()}>
+              <Button variant="outline" onClick={checkStatus}>
                 Check Status
               </Button>
               <Button variant="ghost" onClick={handleLogout}>
