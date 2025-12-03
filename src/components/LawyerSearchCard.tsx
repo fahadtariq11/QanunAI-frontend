@@ -49,6 +49,23 @@ export const LawyerSearchCard = ({ lawyer, compact = false }: LawyerSearchCardPr
   
   const matchPercentage = Math.round((lawyer.similarity_score || 0) * 100);
 
+  // Normalize specializations to always be an array
+  const getSpecializations = (): string[] => {
+    if (!lawyer.specializations) return [];
+    if (Array.isArray(lawyer.specializations)) return lawyer.specializations;
+    if (typeof lawyer.specializations === 'string') {
+      try {
+        const parsed = JSON.parse(lawyer.specializations);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return lawyer.specializations ? [lawyer.specializations] : [];
+      }
+    }
+    return [];
+  };
+
+  const specializations = getSpecializations();
+
   const handleBookConsultation = async () => {
     if (!bookingSubject.trim()) {
       toast({
@@ -155,16 +172,16 @@ export const LawyerSearchCard = ({ lawyer, compact = false }: LawyerSearchCardPr
               </div>
               
               {/* Specializations */}
-              {(lawyer.specializations?.length ?? 0) > 0 && (
+              {specializations.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  {lawyer.specializations!.slice(0, 3).map((spec, idx) => (
+                  {specializations.slice(0, 3).map((spec, idx) => (
                     <Badge key={idx} variant="outline" className="text-xs font-normal">
                       {spec}
                     </Badge>
                   ))}
-                  {lawyer.specializations!.length > 3 && (
+                  {specializations.length > 3 && (
                     <Badge variant="outline" className="text-xs font-normal">
-                      +{lawyer.specializations!.length - 3} more
+                      +{specializations.length - 3} more
                     </Badge>
                   )}
                 </div>

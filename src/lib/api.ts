@@ -524,7 +524,7 @@ interface LawyerSearchResult {
   email?: string;
   title?: string;
   firm?: string;
-  specializations?: string[];
+  specializations?: string[] | string;  // Can be array or JSON string from backend
   primary_specialization?: string;
   city?: string;
   jurisdiction?: string;
@@ -533,7 +533,7 @@ interface LawyerSearchResult {
   rating?: number;
   review_count?: number;
   bio?: string;
-  languages?: string[];
+  languages?: string[] | string;  // Can be array or JSON string from backend
   response_time?: string;
   similarity_score?: number;
   match_reason?: string;
