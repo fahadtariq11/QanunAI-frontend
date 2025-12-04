@@ -50,6 +50,11 @@ const DocumentAnalysis = () => {
   
   const isLoading = docLoading || analysisLoading;
   
+  // Deduplicate key findings by title+description to avoid repeated entries
+  const deduplicatedFindings = Array.isArray(analysisData?.key_findings)
+    ? [...new Map(analysisData.key_findings.map((f: any) => [f.title + f.description, f])).values()]
+    : [];
+
   // Transform API data to match the UI format
 // Transform API data to match the UI format
 const analysis = analysisData ? {
@@ -58,9 +63,7 @@ const analysis = analysisData ? {
   uploadDate: document?.uploaded_at ? new Date(document.uploaded_at).toLocaleDateString() : 'N/A',
   status: 'analyzed',
   riskLevel: analysisData.risk_level,
-  riskCount: Array.isArray(analysisData.key_findings)
-    ? analysisData.key_findings.length
-    : (analysisData.risk_count ?? 0),
+  riskCount: deduplicatedFindings.length,
   // Backend already provides a human-readable size like "1.5 MB"
   fileSize: document?.file_size || 'N/A',
   // Backend uses `pages`
@@ -70,7 +73,7 @@ const analysis = analysisData ? {
   overallRiskScore: analysisData.overall_risk_score != null
     ? Number(analysisData.overall_risk_score) / 10
     : null,
-  keyFindings: analysisData.key_findings ?? [],
+  keyFindings: deduplicatedFindings,
   // Coerce metrics to numbers (backend typically 0–100)
   documentMetrics: {
     clarity: Number(analysisData.document_metrics?.clarity ?? 0),
