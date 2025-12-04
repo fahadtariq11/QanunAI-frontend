@@ -141,10 +141,7 @@ export const LegalUpdateCard = ({ update }: LegalUpdateCardProps) => {
         )}
 
         {/* Action */}
-        <div className="flex items-center justify-between pt-2 border-t">
-          <div className="text-xs text-foreground-muted">
-            Impact on your documents will be analyzed automatically
-          </div>
+        <div className="flex items-center justify-end pt-2 border-t">
           <Button variant="ghost" size="sm" className="text-primary">
             Read Full Article
             <ExternalLink className="ml-2 h-3 w-3" />
