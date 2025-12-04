@@ -1,7 +1,7 @@
+import { useState } from 'react';
 import { 
   FileText, 
   MoreVertical,
-  Download,
   Trash2,
   Eye,
   AlertTriangle,
@@ -9,7 +9,8 @@ import {
   Clock,
   Calendar,
   HardDrive,
-  MessageCircle
+  MessageCircle,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -21,8 +22,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 import { useChatbot } from '@/contexts/ChatbotContext';
+import { useDeleteDocument } from '@/hooks/useApi';
+import { useToast } from '@/hooks/use-toast';
 
 interface Document {
   id: number;
@@ -43,6 +56,28 @@ interface DocumentCardProps {
 export const DocumentCard = ({ document }: DocumentCardProps) => {
   const navigate = useNavigate();
   const { openWithDocument } = useChatbot();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const deleteDocument = useDeleteDocument();
+  const { toast } = useToast();
+
+  const handleDelete = () => {
+    deleteDocument.mutate(document.id, {
+      onSuccess: () => {
+        toast({
+          title: "Document deleted",
+          description: `"${document.name}" has been deleted.`,
+        });
+        setShowDeleteDialog(false);
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Delete failed",
+          description: error.message || "Could not delete the document.",
+          variant: "destructive",
+        });
+      },
+    });
+  };
 
   const handleAskChatbot = () => {
     openWithDocument({
@@ -94,6 +129,7 @@ export const DocumentCard = ({ document }: DocumentCardProps) => {
   };
 
   return (
+    <>
     <Card className="hover-lift transition-smooth">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
@@ -124,15 +160,14 @@ export const DocumentCard = ({ document }: DocumentCardProps) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate(`/app/documents/${document.id}`)}>
                 <Eye className="mr-2 h-4 w-4" />
                 View Document
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Download className="mr-2 h-4 w-4" />
-                Download
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem 
+                className="text-destructive"
+                onClick={() => setShowDeleteDialog(true)}
+              >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>
@@ -210,5 +245,31 @@ export const DocumentCard = ({ document }: DocumentCardProps) => {
         </div>
       </CardContent>
     </Card>
+
+    {/* Delete Confirmation Dialog */}
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Document</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete "{document.name}"? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={handleDelete} 
+            className="bg-destructive hover:bg-destructive/90"
+            disabled={deleteDocument.isPending}
+          >
+            {deleteDocument.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };
