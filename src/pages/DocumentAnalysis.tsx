@@ -459,12 +459,7 @@ const analysis = analysisData ? {
           {/* Summary Section */}
           <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Analysis Overview</span>
-            <Badge className={cn("text-sm", getRiskBadgeClass(analysis.riskLevel))}>
-              {analysis.riskCount} risks identified
-            </Badge>
-          </CardTitle>
+          <CardTitle>Analysis Overview</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-foreground-muted leading-relaxed">{analysis.summary}</p>
@@ -555,6 +550,15 @@ const analysis = analysisData ? {
                   </Badge>
                 </div>
                 <p className="text-sm text-foreground-muted">{finding.description}</p>
+                
+                {/* Show clause excerpt if available */}
+                {finding.clause && (
+                  <div className="mt-2 p-3 bg-muted/50 rounded-lg border border-border/50">
+                    <p className="text-xs text-foreground-muted italic">
+                      "{finding.clause.length > 200 ? finding.clause.substring(0, 200) + '...' : finding.clause}"
+                    </p>
+                  </div>
+                )}
               </div>
               
               <div className="pl-4 border-l-2 border-accent">
