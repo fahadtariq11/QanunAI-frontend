@@ -9,6 +9,68 @@ An intelligent, multi-agent LegalTech platform that helps individuals, freelance
 
 This system empowers non-lawyers to interpret contracts quickly and safely while providing access to verified lawyers for professional advice.
 
+---
+
+## 🏃 **Running Locally**
+
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- PostgreSQL with pgvector extension (or use the hosted Render database)
+
+### 1. Backend (Django)
+
+```bash
+# Navigate to backend
+cd backend-deployment/QanunAI
+
+# Activate virtual environment
+.\venv\Scripts\Activate.ps1    # Windows PowerShell
+# OR
+source venv/bin/activate        # macOS/Linux
+
+# Navigate to Django project
+cd backend
+
+# Create .env file with required variables:
+# DATABASE_URL=postgres://...
+# OPENROUTER_API_KEY=your-key
+# DEBUG=True
+# ALLOWED_HOSTS=localhost,127.0.0.1
+# CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8080
+
+# Run migrations (if needed)
+python manage.py migrate
+
+# Start the server
+python manage.py runserver
+# Backend runs at http://localhost:8000
+```
+
+### 2. Frontend (Vite + React)
+
+```bash
+# Navigate to frontend
+cd frontend-deployment/QanunAI-frontend
+
+# Install dependencies
+npm install
+
+# Ensure .env has correct backend URL:
+# VITE_API_BASE_URL="http://localhost:8000/api"
+
+# Start dev server
+npm run dev
+# Frontend runs at http://localhost:8080
+```
+
+### 3. Access the App
+- **Frontend**: http://localhost:8080
+- **Backend API**: http://localhost:8000/api
+- **Admin Panel**: http://localhost:8000/admin
+
+---
+
 
 
 ## 🚀 **Features**
@@ -68,19 +130,6 @@ Storage Layer
 
 
 
-## 📸 **Screenshots**
-
-> *(Add your actual screenshots here once frontend is ready)*
-
-```
-/screenshots
-   ├── upload_page.png
-   ├── analysis_results.png
-   ├── qa_chat.png
-   ├── compliance_report.png
-   ├── lawyer_directory.png
-   └── consultation_request.png
-```
 
 
 
